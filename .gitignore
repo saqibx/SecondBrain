@@ -1,0 +1,106 @@
+# ------------------------
+# Python
+# ------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual envs
+.venv/
+venv/
+env/
+ENV/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Bytecode / caches
+.pytest_cache/
+.mypy_cache/
+.pyre/
+.pytype/
+.ipynb_checkpoints/
+
+# Logs / temp
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# ------------------------
+# Project-specific (RAG)
+# ------------------------
+# Vector DB persistence
+chroma_db/
+
+# Raw and processed data
+DATA/
+downloads/
+
+# If you want the folders to exist but stay empty in Git,
+# keep a readme and unignore it:
+!DATA/README.md
+!downloads/README.md
+
+# ------------------------
+# Secrets / env
+# ------------------------
+.env
+*.env
+*.env.*
+.envrc
+# Keep a template in Git if you want:
+!.env.example
+
+# ------------------------
+# Editor / OS junk
+# ------------------------
+# PyCharm / IntelliJ
+.idea/
+# VS Code
+.vscode/
+# OS
+.DS_Store
+Thumbs.db
+
+# ------------------------
+# Common binaries & large blobs (don’t version these)
+# ------------------------
+*.db
+*.sqlite
+*.sqlite3
+*.bin
+*.dat
+*.pkl
+*.joblib
+*.npy
+*.npz
+*.h5
+*.hdf5
+*.pth
+*.pt
+*.onnx
+*.model
+*.sav
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.rar
+
+# Media (if you don’t want them in Git)
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp3
+*.mp4
+*.mov
