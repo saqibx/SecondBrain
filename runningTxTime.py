@@ -73,11 +73,12 @@ def embed_documents():
     docs = parse_blocks(full_text)
 
     print(f"[*] {len(chunks)} chunks generated. Embedding and storing...")
-    vectorstore = Chroma.from_documents(
-        documents=docs,
-        embedding=embedding_model,
+    vectorstore = Chroma(
+        embedding_function=embedding_model,
         persist_directory=CHROMA_DIR,
     )
+    vectorstore.add_documents(docs)
+
     print("[✓] Embedding complete and saved to disk.")
 
 # ---- STEP 2: RAG PIPELINE ----

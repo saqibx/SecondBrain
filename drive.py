@@ -6,6 +6,7 @@ from google.oauth2.credentials import Credentials
 from docx import Document
 import os
 from dotenv import load_dotenv
+from Helper import get_summary_fromAI
 load_dotenv()
 
 
@@ -47,32 +48,6 @@ def extract_text_docx(filepath):
     return "\n".join([p.text for p in doc.paragraphs])
 
 
-def get_summary_fromAI(text):
-    prompt = f'''
-    You are a summarizing assistant, when given information you will translate that information into common
-    speak / commonly used words and summarize them. I want to to make sure that you keep all of the relevant
-    information. DO NOT MAKE UP DATA OR LEAVE IMPORTANT INFORMATION OUT. DO NOT USE COMPLEX VOCABULARY.
-    
-    The goal of your summary should be to make things concise and simple enough that a regular person 
-    would be able to query that information using a RAG.
-    
-    Here is how i want you to sturcture your response:
-        Topic: (choose from the following: sponsorship, meeting, club history, executives, misc
-        Guests: (if people or companies are mentioned by name put them here)
-        Year: if given a year put the year 
-        Notes: (here is where your summary should be)
-    
-    here is the text:
-    {text}
-    '''
-    client = genai.Client()
-
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt
-    )
-
-    return response.text
 
 
 def extract_text_from_gdoc(docs_service, file_id):
