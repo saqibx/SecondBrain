@@ -8,40 +8,42 @@ from typing_extensions import TypedDict
 load_dotenv()
 
 class AgentState(TypedDict):
-    values: List[int]
     name: str
-    operation: str
-    answer: float
-    result: str
+    age: str
+    skills: List[str]
+    final: str
 
-def process_values(state:AgentState) -> AgentState:
-    '''This function handles multiple different inputs'''
-    u_name = state["name"]
-    u_values = state["values"]
-    u_operation = state["operation"]
-    a, b, c, d = u_values
 
-    if u_operation == "+":
-        state["answer"] = sum(u_values)
-    elif u_operation == "-":
 
-        sub = lambda a,b,c,d: a-b-c-d
-        state["answer"] = sub(a,b,c,d)
-    elif u_operation == "*":
-        multiply = lambda a,b,c,d:a*b*c*d
-        state["answer"] = multiply(a,b,c,d)
-    else:
-        divide = lambda a,b,c,d: (a/b)/(c/d)
-        state["answer"] = divide(a,b,c,d)
+def first(state: AgentState) -> AgentState:
+    '''First node of our sequence'''
 
-    state['result'] = f"Hi there {state['name']}! Your answer is {(state['answer'])}"
+    state["final"] = f"Hi {state['name']}!"
+    return state
+
+
+def second(state: AgentState) -> AgentState:
+    '''second node of our sequence'''
+
+    state["final"] = state["final"] + f" You are {state['age']} years old!"
+    return state
+
+def third(state: AgentState) -> AgentState:
+    '''Third node of our sequence'''
+    Skills = state["skills"]
+    state["final"] = state["final"] + f"You are skilled in {', '.join(Skills)}"
     return state
 
 graph = StateGraph(AgentState)
-graph.add_node("process", process_values)
-graph.set_entry_point("process")
-graph.set_finish_point("process")
+graph.add_node("first", first)
+graph.add_node("second", second)
+graph.add_node("third",third)
+graph.set_entry_point("first")
+graph.add_edge("first","second")
+graph.add_edge("second","third")
+graph.set_finish_point("third")
+
 app = graph.compile()
 
-answers = app.invoke({"values": [1,2,3,4], "name": "saqib","operation":"*"})
-print(answers["result"])
+result = app.invoke({"name":"saqib","age":19,"skills":["Python", "LangGraph"]})
+print(result["final"])
