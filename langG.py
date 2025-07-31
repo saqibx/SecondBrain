@@ -8,42 +8,47 @@ from typing_extensions import TypedDict
 load_dotenv()
 
 class AgentState(TypedDict):
-    name: str
-    age: str
-    skills: List[str]
-    final: str
+    number1: int
+    operation: str
+    number2: int
+    finalNumber: int
 
 
-
-def first(state: AgentState) -> AgentState:
-    '''First node of our sequence'''
-
-    state["final"] = f"Hi {state['name']}!"
+def adder(state: AgentState)->AgentState:
+    '''This node adds the 2 numbers'''
+    state["finalNumber"] = state["number1"] + state["number2"]
     return state
 
-
-def second(state: AgentState) -> AgentState:
-    '''second node of our sequence'''
-
-    state["final"] = state["final"] + f" You are {state['age']} years old!"
+def subtractor(state:AgentState)-> AgentState:
+    '''This node subtracts'''
+    state["finalNumber"] = state["number1"] - state["number2"]
     return state
 
-def third(state: AgentState) -> AgentState:
-    '''Third node of our sequence'''
-    Skills = state["skills"]
-    state["final"] = state["final"] + f"You are skilled in {', '.join(Skills)}"
-    return state
+def decide(state:AgentState)->AgentState:
+    '''decides which node to use'''
+    if state["operation"] == "+":
+        return "addition_operation"
+    elif state["operation"] == "-":
+        return "subtraction_operation"
+
 
 graph = StateGraph(AgentState)
-graph.add_node("first", first)
-graph.add_node("second", second)
-graph.add_node("third",third)
-graph.set_entry_point("first")
-graph.add_edge("first","second")
-graph.add_edge("second","third")
-graph.set_finish_point("third")
+graph.add_node("adder",adder)
+graph.add_node("subtractor", subtractor)
+graph.add_node("router",lambda state:state) #passthrough function
+
+graph.add_edge(START,"router")
+graph.add_conditional_edges(
+    "router", decide,
+
+    {
+        "addition_operation": "adder",
+        "subtraction_operation": "subtractor"
+    }
+)
+graph.add_edge("adder", END)
+graph.add_edge("subtractor", END)
+init = AgentState(number1=32, operation="-", number2=93)
 
 app = graph.compile()
-
-result = app.invoke({"name":"saqib","age":19,"skills":["Python", "LangGraph"]})
-print(result["final"])
+print(app.invoke(init))
