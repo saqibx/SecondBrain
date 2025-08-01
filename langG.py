@@ -1,94 +1,56 @@
 from dotenv import load_dotenv
-from typing import Annotated, Literal, List
+from typing import Annotated, Literal, List, Dict
 from langgraph.graph import StateGraph, START, END
 from langchain.chat_models import init_chat_model
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
+import random
 
 load_dotenv()
 
 class AgentState(TypedDict):
-    number1: int
-    operation: str
-    operation2: str
-    number2: int
-    number3: int
-    number4: int
-    finalNumber: int
-    finalNumber2: int
+    name: str
+    number: List[int]
+    counter: int
 
+def greet(state: AgentState)->AgentState:
+    '''Greeting node'''
 
-def adder(state: AgentState)->AgentState:
-    '''This node adds the 2 numbers'''
-    state["finalNumber"] = state["number1"] + state["number2"]
-    return state
-
-def subtractor(state:AgentState)-> AgentState:
-    '''This node subtracts'''
-    state["finalNumber"] = state["number1"] - state["number2"]
-    return state
-
-
-def adder2(state: AgentState) -> AgentState:
-    '''This node subtracts'''
-    state["finalNumber2"] = state["number3"] + state["number4"]
-    return state
-
-
-def subtractor2(state: AgentState) -> AgentState:
-    '''This node subtracts'''
-    state["finalNumber2"] = state["number3"] - state["number4"]
+    state['name'] = f"Hi there {state['name']} "
+    state['counter'] = 0
 
     return state
 
-def decide(state:AgentState)->AgentState:
-    '''decides which node to use'''
-    if state["operation"] == "+":
-        return "addition_operation"
-    elif state["operation"] == "-":
-        return "subtraction_operation"
+def randomnode(state:AgentState)->AgentState:
+    '''random node'''
+    state['number'].append(random.randint(0,10))
+    state['counter'] +=1
 
-def decide2(state:AgentState)->AgentState:
-    if state["operation2"] == "+":
-        return "addition_operation2"
-    elif state['operation2'] == "-":
-        return "subtraction_operation2"
+    return state
+
+def scountinue(state:AgentState)->AgentState:
+    ''''''
+    if state["counter"] < 5:
+        print("Entering Loop", state["counter"])
+        return "loop"
+    else:
+        return "exit"
 
 graph = StateGraph(AgentState)
-graph.add_node("adder",adder)
-graph.add_node("subtractor", subtractor)
-graph.add_node("router",lambda state:state) #passthrough function
-
-graph.add_node('adder2',adder2)
-graph.add_node('subtractor2', subtractor2)
-graph.add_node("router2", lambda state:state)
-
-graph.add_edge("adder","router2")
-graph.add_edge("subtractor", "router2")
-
-
-graph.add_edge(START,"router")
+graph.add_node("greeting", greet)
+graph.add_node("random", randomnode)
+graph.add_edge("greeting","random")
 
 graph.add_conditional_edges(
-    "router", decide,
-
+    "random", # source  node
+    scountinue, # Action
     {
-        "addition_operation": "adder",
-        "subtraction_operation": "subtractor"
+        "loop": "random", # self loop back to the same node
+        "exit": END # end the graph
     }
 )
 
-graph.add_conditional_edges(
-    "router2", decide2,
-
-    {
-        "addition_operation2": "adder2",
-        "subtraction_operation2": "subtractor2"
-    }
-)
-graph.add_edge("adder2", END)
-graph.add_edge("subtractor2", END)
-init = AgentState(number1=32, operation="-", number2=93, operation2="+", number3=70,number4=10)
-
+graph.set_entry_point("greeting")
 app = graph.compile()
-print(app.invoke(init))
+
+app.invoke({"name":"saqib", "number": [], "counter":-1})
