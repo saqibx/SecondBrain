@@ -4,6 +4,7 @@ from typing_extensions import TypedDict
 from tavily import TavilyClient
 import os
 import time
+from utils import AgentState, model
 
 
 '''
@@ -25,64 +26,28 @@ from langgraph.prebuilt import ToolNode
 
 load_dotenv()
 
-class AgentState(TypedDict):
-    messages: Annotated[Sequence[BaseMessage], add_messages]
-    doc: str
 
-# @tool
-# def refine(topic: str)-> str:
-#     '''This is researching tool that can be used to research and refine search'''
-#     client = TavilyClient(os.getenv("TAVILY_API_KEY"))
-#     search = client.search(
-#         query=topic
-#     )
-#     url_list = [item["url"] for item in search['results']][:6]
-#     extract = client.extract(
-#         urls=url_list
-#     )
-#
-#     content_list = [things["raw_content"] for things in extract['results']]
-#     summarized_articles = []
-#     for text in content_list:
-#         sum_prompt = f"""Summarize this article in 5-6 Bullet points. NO MORE. Include any useful
-#         links related to the topic at the end. Any ads, or links related to ads should not be here.
-#
-#         DO NOT INCLUDE ANYTHING BUT THE SUMMARY OF THE TEXT, NO PLEASANTRIES. DO NOT HALLUCINATE.
-#
-#         Content: {text}
-#                     """
-#
-#         answer = model.invoke(sum_prompt)
-#         content_list[text] = answer
-#
-#     return "\n\n---\n\n".join(content_list)
+
+
 @tool
-def refine(topic: str) -> str:
-    '''This is a researching tool that finds and summarizes articles'''
-    client = TavilyClient(os.getenv("TAVILY_API_KEY"))
-    search = client.search(query=topic)
+def refine(email_contents: str) -> str:
+    '''This is an email drafting tool'''
+    email_prompt = SystemMessage(content=f'''
+        The contents attached below will give you everything you need to write the perfect email. For reference my name is
+        Saqib Mazhar, I am the Co-VP External of Tech Start UCalgary, A student-led start-up incubator here at the University of 
+        Calgary.
+        
+        Draft a professional, yet human sounding email,
+        
+        Here is the context: {email_contents}
+        ''')
 
-    url_list = [item["url"] for item in search['results']][:6]
-    extract = client.extract(urls=url_list)
+    response = model.invoke(email_prompt)
+    return response.content
 
-    summarized_articles = []
 
-    for raw in extract['results']:
-        text = raw["raw_content"]
-        url = raw.get("url", "")
 
-        sum_prompt = f"""Summarize this article in 5-6 bullet points. DO NOT exceed that.
-Include any useful links related to the topic at the end. Skip ads or irrelevant content.
 
-Content:
-{text}
-        """
-        time.sleep(5)
-        answer = model.invoke(sum_prompt)
-        summary = f"{answer.content.strip()}\n(Source: {url})"
-        summarized_articles.append(summary)
-
-    return "\n\n---\n\n".join(summarized_articles)
 
 
 @tool
@@ -103,25 +68,23 @@ def save(filename: str, content: str) -> str:
 tools = [refine,save]
 model = ChatOpenAI(model='gpt-4o').bind_tools(tools)
 
-def agent(state:AgentState)->AgentState:
+def research_agent(state:AgentState)->AgentState:
     '''This is the main agent that does our work'''
     sys_prompt = SystemMessage(content=f"""
-    You are an expert research assistant. Here's how you must behave:
+        
+        You are my helpful assistant that will help me write better emails to secure meetings and sponsorships with
+        tech industry professionals here in Calgary. You are aware that I am the Co-VP External of Tech Start UCalgary, 
+        A student led start-up incubator here at the University of Calgary.
+        
+        you have the responsibility of drafting an email based on the content I provide you with. Keep a natural human tone, 
+        no buzz words or classic AI phrases. Keep it Human sounding.
+        
+        here is the content, summarize it and hit all key points, then give me a draft of what you came up with.
+        
+        Content: {state["email"]}
+        """)
 
-    - When you receive research results from the refine tool, your job is to:
-        1. Read the research carefully
-        2. Extract key points and insights (DO NOT repeat the entire article)
-        3. Format your reply as bullet points or brief sections (max 5–7 key takeaways)
-        4. Include a "Sources" section at the end with all relevant URLs
-        5. Once you have returned your research include a brief entry giving a TLDR.
-    - DO NOT dump full paragraphs from the original research.
-    - When the user wants additional research, call the refine tool again.
-    - When the research is complete, call the save tool and pass the filename and document content.
-
-    Current document content: {state["doc"]}
-    """)
-
-    if not state['messages'] and state['doc']:
+    if not state['messages'] and state['email']:
         prompt_text = "Hi there, I need some assistance"
         user_message = HumanMessage(content=prompt_text)
 
@@ -131,14 +94,19 @@ def agent(state:AgentState)->AgentState:
 
     all_messages = [sys_prompt] + list(state['messages']) + [user_message]
     response = model.invoke(all_messages)
-    state['doc'] = response.content
+
+
+    state['email'] = response.content
+
+
+
 
     print("========= AI =========")
     print(f"\n🤖 AI: {response.content}")
     if hasattr(response, "tool_calls") and response.tool_calls:
         print(f"🔧 USING TOOLS: {[tc['name'] for tc in response.tool_calls]}")
 
-    return {"messages": list(state["messages"]) + [user_message, response], "doc": state['doc']}
+    return {"messages": list(state["messages"]) + [user_message, response], "email": state['email']}
 
 
 
@@ -160,16 +128,16 @@ def cont(state:AgentState)->str:
 
 
 graph = StateGraph(AgentState)
-graph.add_node("agent", agent)
+graph.add_node("research_agent", research_agent)
 graph.add_node("tools", ToolNode(tools))
-graph.set_entry_point("agent")
-graph.add_edge("agent","tools")
+graph.set_entry_point("research_agent")
+graph.add_edge("research_agent","tools")
 
 graph.add_conditional_edges(
     "tools",
     cont,
     {
-        "continue": "agent",
+        "continue": "research_agent",
         "end": END
     }
 )
@@ -188,7 +156,7 @@ def print_messages(messages):
 
 def run():
     print("\n===== DRAFTER ====")
-    state = {"messages": [], "doc": ""}
+    state = {"messages": [], "doc": "", "email": ""}
 
     for step in app.stream(state, stream_mode="values"):
         if 'messages' in step:
