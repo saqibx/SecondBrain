@@ -34,15 +34,16 @@ def refine(email_contents: str) -> str:
     '''This is an email drafting tool'''
     email_prompt = SystemMessage(content=f'''
         The contents attached below will give you everything you need to write the perfect email. For reference my name is
-        Saqib Mazhar, I am the Co-VP External of Tech Start UCalgary, A student-led start-up incubator here at the University of 
+        Saqib Mazhar, make sure you include this, I am the Co-VP External of Tech Start UCalgary, A student-led start-up incubator here at the University of 
         Calgary.
+        
         
         Draft a professional, yet human sounding email,
         
         Here is the context: {email_contents}
         ''')
 
-    response = model.invoke(email_prompt)
+    response = model.invoke([email_prompt])
     return response.content
 
 
@@ -71,18 +72,20 @@ model = ChatOpenAI(model='gpt-4o').bind_tools(tools)
 def research_agent(state:AgentState)->AgentState:
     '''This is the main agent that does our work'''
     sys_prompt = SystemMessage(content=f"""
-        
-        You are my helpful assistant that will help me write better emails to secure meetings and sponsorships with
-        tech industry professionals here in Calgary. You are aware that I am the Co-VP External of Tech Start UCalgary, 
-        A student led start-up incubator here at the University of Calgary.
-        
-        you have the responsibility of drafting an email based on the content I provide you with. Keep a natural human tone, 
-        no buzz words or classic AI phrases. Keep it Human sounding.
-        
-        here is the content, summarize it and hit all key points, then give me a draft of what you came up with.
-        
-        Content: {state["email"]}
-        """)
+    You are my helpful assistant that will help me write better emails to secure meetings and sponsorships with
+    tech industry professionals here in Calgary. You are aware that I am the Co-VP External of Tech Start UCalgary, 
+    a student-led start-up incubator at the University of Calgary.
+
+    Your job is to write a professional but natural-sounding email based on the content I provide. 
+    Keep the tone human and avoid buzzwords or generic AI phrases.
+    
+    Here is some information about who I am and what my club does: {os.getenv("CLUB_INFORMATION")}
+
+    Here is the content. Draft the email based on it, Make sure you talk about specific programs that the company does in your email that align
+    with the clubs initiative. Do not summarize or explain anything—just write the email.
+
+    Content: {state["email"]}
+    """)
 
     if not state['messages'] and state['email']:
         prompt_text = "Hi there, I need some assistance"
@@ -155,14 +158,14 @@ def print_messages(messages):
 
 
 def run():
-    print("\n===== DRAFTER ====")
+    print("\n===== EMAIL DRAFTER ====")
     state = {"messages": [], "doc": "", "email": ""}
 
     for step in app.stream(state, stream_mode="values"):
         if 'messages' in step:
             print_messages(step['messages'])
 
-    print("\n==== DRAFTER DONE ====")
+    print("\n==== EMAIL DRAFTER DONE ====")
 
 if __name__ == "__main__":
     run()
