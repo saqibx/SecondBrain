@@ -6,7 +6,7 @@ Sequence - Automaticallu handles the state ipdates for sequences such as by addi
 add_message - reducer function that helps append updates from nodes to your state
 '''
 from langgraph.graph import StateGraph, START, END
-from langchain_core.messages import BaseMessage, ToolMessage, SystemMessage
+from langchain_core.messages import BaseMessage, ToolMessage, SystemMessage, HumanMessage
 '''
 Base Message - Foundational Class for all message types in LangGraph
 Tool Message - Passes data back to LLM after it calls a tool such as the content and the tool_call_id
@@ -19,79 +19,125 @@ from langgraph.prebuilt import ToolNode
 
 
 load_dotenv()
-
+document_content = ""
 class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
 
-@tool
-def add(a:int, b:int):
-    '''This is an addition function that adds two numbers together'''
-
-    return a+b
 
 @tool
-def subtract(a:int, b:int):
-    '''This is a subtraction function'''
-    return a-b
+def update(content: str) -> str:
+    '''Updates the document with the provided content'''
+
+    global document_content
+    document_content = content
+    return f"Document has been updated successfully! Current content is \n {document_content}"
 
 @tool
-def multiply(a:int,b:int):
-    '''This is a multiplication function'''
-    return a*b
+def save(filename: str) -> str:
+    '''Saves the information to the TEXT file and finishes the program
+    Args: filename: Name for the filename
+    '''
+    global document_content
 
-tools = [add, subtract, multiply]
+    if not filename.endswith(".txt"):
+        filename = f"{filename}.txt"
+
+    try:
+        with open(filename, 'w') as file:
+            file.write(document_content)
+            print(f"Successfully saved {filename}")
+            return f"document has been saved"
+
+    except Exception as e:
+        return f"Error saving document {str(e)}"
+
+tools = [update,save]
 
 model = ChatOpenAI(model="gpt-4o").bind_tools(tools)
 
-def model_call(state:AgentState)->AgentState:
-    system_prompt = SystemMessage(content="You are my AI assistant, please answer my query")
 
-    response = model.invoke([system_prompt] + state['messages'])
-    return {"messages":[response]}
-    # Another way of updating state, same as state['messages'] = response
+def our_agent(state: AgentState) -> AgentState:
+    system_prompt = SystemMessage(content=f"""
+    You are Drafter, a helpful writing assistant. You are going to help the user update and modify documents.
 
+    - If the user wants to update or modify content, use the 'update' tool with the complete updated content.
+    - If the user wants to save and finish, you need to use the 'save' tool.
+    - Make sure to always show the current document state after modifications.
 
-def scontinue(state:AgentState)->AgentState:
-    messages = state["messages"]
-    last_message = messages[-1]
+    The current document content is:{document_content}
+    """)
 
-    if not last_message.tool_calls:
-        return "end"
+    if not state["messages"]:
+        user_input = "I'm ready to help you update a document. What would you like to create?"
+        user_message = HumanMessage(content=user_input)
+
     else:
+        user_input = input("\nWhat would you like to do with the document? ")
+        print(f"\n👤 USER: {user_input}")
+        user_message = HumanMessage(content=user_input)
+
+    all_messages = [system_prompt] + list(state["messages"]) + [user_message]
+
+    response = model.invoke(all_messages)
+
+    print(f"\n🤖 AI: {response.content}")
+    if hasattr(response, "tool_calls") and response.tool_calls:
+        print(f"🔧 USING TOOLS: {[tc['name'] for tc in response.tool_calls]}")
+
+    return {"messages": list(state["messages"]) + [user_message, response]}
+
+
+def scontinue(state:AgentState)->str:
+    '''determine if we should continue this conversation or end it'''
+
+    messages = state['messages']
+
+    if not messages:
         return "continue"
 
+    for message in reversed(messages):
+        if (isinstance(message, ToolMessage) and
+            "saved" in message.content.lower() and
+            "document" in message.content.lower()):
+            return "end"
 
+    return "continue"
+
+def print_messages(messages):
+    '''function that prints messages in a more readable format'''
+    if not messages:
+        return
+
+    for message in messages[-3:]:
+        if isinstance(message,ToolMessage):
+            print(f"TOOL RESULT: {message.content}")
 
 graph = StateGraph(AgentState)
-graph.add_node("our_agent", model_call)
-
-tool_node = ToolNode(tools=tools)
-graph.add_node("tools", tool_node)
-
-graph.set_entry_point("our_agent")
+graph.add_node("agent", our_agent)
+graph.add_node("tools", ToolNode(tools))
+graph.set_entry_point("agent")
+graph.add_edge("agent","tools")
 
 graph.add_conditional_edges(
-    "our_agent",
+    "tools",
     scontinue,
-
     {
-        "continue": 'tools',
+        "continue": "agent",
         "end": END
     }
 )
 
-graph.add_edge("tools", "our_agent")
-
 app = graph.compile()
 
+def run():
+    print("\n===== DRAFTER ====")
+    state = {"messages": []}
 
-def print_stream(stream):
-    for s in stream:
-        message = s["messages"][-1]
-        if isinstance(message, tuple):
-            print(message)
-        else:
-            message.pretty_print()
+    for step in app.stream(state, stream_mode="values"):
+        if 'messages' in step:
+            print_messages(step['messages'])
 
-inputs = {"messages": [("user", " (1+5) * (9-5) + (3*5)")]}
-print_stream(app.stream(inputs, stream_mode="values"))
+    print("\n==== DRAFTER DONE ====")
+
+if __name__ == "__main__":
+    run()
