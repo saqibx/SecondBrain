@@ -28,7 +28,7 @@ load_dotenv()
 
 # ---- CONFIG ----
 CHROMA_DIR = "./chroma_db"
-DATA_FILE = "DATA/nottest.txt"
+DATA_FILE = "DATA/NOTION.txt"
 
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 llm = ChatOpenAI(model="gpt-4", temperature=0)

@@ -100,7 +100,7 @@ for file in files:
         print(f"Failed to process {name}: {e}")
 
 
-with open("DATA/premetadata.txt", "w", encoding="utf-8") as f:
+with open("DATA/DRIVE.txt", "w", encoding="utf-8") as f:
     f.write(combined_text)
 
-print("Confirmed: premetadata.txt")
+print("Confirmed: DRIVE.txt")
