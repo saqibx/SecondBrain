@@ -20,6 +20,7 @@ DATA_DIR = r"C:\Users\saqib\PycharmProjects\SecondBrain\DATA"
 
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 
+
 # Initialize custom directories
 RAG.set_directories(CHROMA_DIR, DATA_DIR)
 
@@ -50,9 +51,8 @@ def researcher(topic: str) -> str:
             prompt = f"Summarize this article in 5 bullet points max. Skip ads. Content:\n{text}"
             print(f"\n== RESEARCHING: {url} ==")
 
-            time.sleep(5)  # Avoid rate limits
-            local_model = ChatOpenAI(model="gpt-4o")
-            response = local_model.invoke(prompt)
+            time.sleep(2.5)  # Avoid rate limits
+            response = llm.invoke(prompt)
             summary = f"- {response.content.strip()}\n(Source: {url})"
             summarized.append(summary)
 
@@ -86,8 +86,8 @@ def emailer(email_contents: str) -> str:
     '''
 
     try:
-        local_model = ChatOpenAI(model="gpt-4o")
-        response = local_model.invoke(prompt)
+
+        response = llm.invoke(prompt)
         if not response.content.strip():
             return "ERROR: Empty response from model."
 
@@ -138,20 +138,20 @@ def embedder(docs: Optional[str] = None) -> str:
     try:
         # Format the input into a tagging prompt for GPT
         doc_prompt = f'''
-You are a tagging assistant.
+        You are a tagging assistant.
+        
+        For each chunk of the text below, summarize it in the following format:
+        Topic: Researched Items, [then specify what the topic is]
+        Notes: Copy the content word for word
+        
+        Separate each new entry with a newline.
+        
+        Text:
+        {docs}
+        '''
 
-For each chunk of the text below, summarize it in the following format:
-Topic: Researched Items, [then specify what the topic is]
-Notes: Copy the content word for word
 
-Separate each new entry with a newline.
-
-Text:
-{docs}
-'''
-
-        local_mod = ChatOpenAI(model='gpt-4o-mini')
-        response = local_mod.invoke([HumanMessage(content=doc_prompt)])
+        response = llm.invoke([HumanMessage(content=doc_prompt)])
         clean_text = response.content if response.content else None
 
         if not clean_text:
