@@ -30,6 +30,8 @@ load_dotenv()
 @tool
 def researcher(topic: str) -> str:
     """Research a topic using Tavily and summarize key points."""
+    start_time = time.time()
+
     print(topic)
     if not topic.strip():
         return "ERROR: No research topic provided."
@@ -56,6 +58,8 @@ def researcher(topic: str) -> str:
             summary = f"- {response.content.strip()}\n(Source: {url})"
             summarized.append(summary)
 
+            duration = time.time() - start_time
+            print(f"Time taken: {duration}")
         result = "\n\n".join(summarized) or "ERROR: No valid summaries generated."
         print(f"✅ Research completed for: {topic}")
         print(result)
