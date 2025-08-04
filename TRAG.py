@@ -21,7 +21,8 @@ load_dotenv()
 # ---- SETUP ----
 
 embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
-llm = ChatOpenAI(model="gpt-4", temperature=0)
+
+llm = ChatOpenAI(model="gpt-4.1-mini")
 
 CHROMA_DIR = "./chroma_db"  # Default path - change this to your actual path
 DATA_DIR = "./DATA"

@@ -6,13 +6,14 @@ import io
 
 # Import your agent system
 from Agents.AgentMain import app as agent_app, AgentState
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 
 load_dotenv()
 app = Flask(__name__)
 app.secret_key = '67'
 
-@app.route('/', methods=["POST","GET"])
+
+@app.route('/', methods=["POST", "GET"])
 def admin():
     username = " "
     password = " "
@@ -41,11 +42,12 @@ def admin():
         </form>
     '''
 
+
 @app.route('/home', methods=["POST", "GET"])
 def home():
     if not session.get("admin"):
         return redirect(url_for("admin"))
-    
+
     # Initialize session state for agent if not exists
     if 'agent_state' not in session:
         session['agent_state'] = {
@@ -54,53 +56,92 @@ def home():
             'email_draft': '',
             'conversation_history': []
         }
-    
+
     agent_response = ""
     user_input = ""
-    
+
     if request.method == "POST":
         user_input = request.form.get('user_input', '').strip()
-        
+
         if user_input:
-            # Create agent state
+            # Create new human message
+            new_human_message = HumanMessage(content=user_input)
+
+            # Build complete message history for the agent
+            # For now, let's use a simpler approach: only keep Human and AI messages
+            # This avoids the tool message complexity while maintaining conversation context
+            agent_messages = []
+
+            for stored_msg in session['agent_state']['messages']:
+                if stored_msg['type'] == 'human':
+                    agent_messages.append(HumanMessage(content=stored_msg['content']))
+                elif stored_msg['type'] == 'ai':
+                    # Only include the text content, not tool calls
+                    # This keeps the conversation context without tool complexity
+                    agent_messages.append(AIMessage(content=stored_msg['content']))
+
+            # Add the new human message
+            agent_messages.append(new_human_message)
+
+            # Create agent state with full conversation history
             state = {
-                "messages": [HumanMessage(content=user_input)],
+                "messages": agent_messages,
                 "research_draft": session['agent_state']['research_draft'],
                 "email_draft": session['agent_state']['email_draft']
             }
-            
+
             # Capture the agent output
             captured_output = io.StringIO()
             sys.stdout = captured_output
-            
+
             try:
                 # Run the agent
-                final_state = None
-                for step_output in agent_app.stream(state, stream_mode="values"):
-                    final_state = step_output
-                
+                # final_state = None
+                # for step_output in agent_app.stream(state, stream_mode="values"):
+                #     final_state = step_output
+                final_state = agent_app.invoke(state)
+
                 # Restore stdout
                 sys.stdout = sys.__stdout__
                 agent_response = captured_output.getvalue()
-                
+
                 if final_state:
-                    # Update session state
+                    # Update session state with final results
                     session['agent_state']['research_draft'] = final_state.get('research_draft', '')
                     session['agent_state']['email_draft'] = final_state.get('email_draft', '')
-                    
-                    # Add to conversation history
+
+                    # Store only Human and AI messages for conversation context
+                    # This avoids tool message serialization complexity
+                    serializable_messages = []
+                    for msg in final_state.get('messages', []):
+                        if isinstance(msg, HumanMessage):
+                            serializable_messages.append({
+                                'type': 'human',
+                                'content': msg.content
+                            })
+                        elif isinstance(msg, AIMessage):
+                            # Store just the content for conversation context
+                            serializable_messages.append({
+                                'type': 'ai',
+                                'content': msg.content
+                            })
+
+                    session['agent_state']['messages'] = serializable_messages
+
+                    # Add to conversation history for display
                     session['agent_state']['conversation_history'].append({
                         'user': user_input,
                         'agent': agent_response,
                         'research': final_state.get('research_draft', ''),
                         'email': final_state.get('email_draft', '')
                     })
-                    
+
                 session.modified = True
-                
+
             except Exception as e:
                 sys.stdout = sys.__stdout__
                 agent_response = f"Error: {str(e)}"
+                print(f"Agent error: {e}")
 
     return render_template_string('''
         <!DOCTYPE html>
@@ -126,6 +167,7 @@ def home():
                 .logout { text-align: right; margin-top: 20px; }
                 .logout a { color: #dc3545; text-decoration: none; }
                 .logout a:hover { text-decoration: underline; }
+                .debug-info { background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; margin-bottom: 20px; border-radius: 5px; font-size: 12px; }
                 pre { white-space: pre-wrap; word-wrap: break-word; max-height: 200px; overflow-y: auto; }
             </style>
         </head>
@@ -135,7 +177,16 @@ def home():
                     <h1>🤖 Agentic Research & Email Assistant</h1>
                     <p>Welcome, admin! Use this interface to interact with your AI agent.</p>
                 </div>
-                
+
+                <!-- Debug Info -->
+                <div class="debug-info">
+                    <strong>Debug Info:</strong>
+                    Messages in memory: {{ agent_state.messages|length }} |
+                    Conversation history: {{ agent_state.conversation_history|length }} |
+                    Research: {{ '✅' if agent_state.research_draft else '❌' }} |
+                    Email: {{ '✅' if agent_state.email_draft else '❌' }}
+                </div>
+
                 <!-- Status Panel -->
                 <div class="status-panel">
                     <div class="status-box research-box">
@@ -148,7 +199,7 @@ def home():
                         </details>
                         {% endif %}
                     </div>
-                    
+
                     <div class="status-box email-box">
                         <h3>📧 Email Status</h3>
                         <p><strong>Status:</strong> {{ '✅ Complete' if agent_state.email_draft else '❌ None' }}</p>
@@ -160,7 +211,7 @@ def home():
                         {% endif %}
                     </div>
                 </div>
-                
+
                 <!-- Chat Interface -->
                 <div class="chat-container" id="chat">
                     {% for conv in agent_state.conversation_history %}
@@ -172,7 +223,7 @@ def home():
                             <pre>{{ conv.agent }}</pre>
                         </div>
                     {% endfor %}
-                    
+
                     {% if user_input %}
                         <div class="message user-message">
                             <strong>You:</strong> {{ user_input }}
@@ -183,7 +234,7 @@ def home():
                         </div>
                     {% endif %}
                 </div>
-                
+
                 <!-- Input Form -->
                 <form method="post">
                     <div class="input-container">
@@ -191,7 +242,7 @@ def home():
                         <button type="submit">Send</button>
                     </div>
                 </form>
-                
+
                 <!-- Quick Actions -->
                 <div style="margin-bottom: 20px;">
                     <h4>💡 Quick Actions:</h4>
@@ -199,13 +250,14 @@ def home():
                     <button onclick="fillInput('Draft a professional email for collaboration')" style="margin: 5px; padding: 8px 12px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">Draft Email</button>
                     <button onclick="fillInput('Save my research to a file')" style="margin: 5px; padding: 8px 12px; background: #ffc107; color: black; border: none; border-radius: 4px; cursor: pointer;">Save Content</button>
                     <button onclick="fillInput('What do you know about Tech Start UCalgary?')" style="margin: 5px; padding: 8px 12px; background: #6f42c1; color: white; border: none; border-radius: 4px; cursor: pointer;">Ask About Tech Start</button>
+                    <a href="{{ url_for('clear_session') }}" style="margin: 5px; padding: 8px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; text-decoration: none; display: inline-block;">🗑️ Clear Memory</a>
                 </div>
-                
+
                 <div class="logout">
                     <a href="{{ url_for('admin') }}">🚪 Logout</a>
                 </div>
             </div>
-            
+
             <script>
                 // Auto scroll to bottom of chat
                 function scrollToBottom() {
@@ -213,22 +265,23 @@ def home():
                     chat.scrollTop = chat.scrollHeight;
                 }
                 scrollToBottom();
-                
+
                 // Quick action buttons
                 function fillInput(text) {
                     document.querySelector('input[name="user_input"]').value = text;
                 }
-                
+
                 // Auto-focus input
                 document.querySelector('input[name="user_input"]').focus();
             </script>
         </body>
         </html>
-    ''', 
-    agent_state=session['agent_state'],
-    user_input=user_input,
-    agent_response=agent_response
-    )
+    ''',
+                                  agent_state=session['agent_state'],
+                                  user_input=user_input,
+                                  agent_response=agent_response
+                                  )
+
 
 @app.route('/clear_session')
 def clear_session():
@@ -236,6 +289,7 @@ def clear_session():
     if 'agent_state' in session:
         del session['agent_state']
     return redirect(url_for('home'))
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5895)
