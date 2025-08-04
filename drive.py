@@ -16,6 +16,8 @@ SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID")
 CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET")
 
+print(CLIENT_ID)
+print(CLIENT_SECRET)
 #auth
 client_config = {
     "installed": {
@@ -100,7 +102,7 @@ for file in files:
         print(f"Failed to process {name}: {e}")
 
 
-with open("DATA/DRIVE.txt", "w", encoding="utf-8") as f:
+with open("DATA/DRIVE_NEW.txt", "w", encoding="utf-8") as f:
     f.write(combined_text)
 
-print("Confirmed: DRIVE.txt")
+print("Confirmed: DRIVE_NEW.txt")

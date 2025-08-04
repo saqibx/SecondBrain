@@ -2,6 +2,7 @@ import json
 import os
 import glob
 from pathlib import Path
+from typing import Optional
 
 from google import genai
 from langchain_community.document_loaders import TextLoader
@@ -13,6 +14,7 @@ from langchain_core.runnables import RunnablePassthrough
 from dotenv import load_dotenv
 import re
 from langchain_core.documents import Document
+from langchain_core.tools import tool
 
 load_dotenv()
 
@@ -185,28 +187,29 @@ def embed_documents():
     print("[✓] Embedding complete and saved to disk.")
     print(f"[✓] Vector database contains {vectorstore._collection.count()} documents.")
 
-
-def embed_documents_silent():
-    """Embed documents without user interaction (for agent use)"""
+@tool
+def embedder(docs: Optional[str] = None) -> str:
+    """Embed documents. Splits input string by newlines. If none provided, uses default ones."""
     print("[*] Auto-embedding documents...")
 
-    all_docs = load_all_documents()
-    if not all_docs:
-        return False
+    if docs:
+        doc_chunks = [chunk.strip() for chunk in docs.split("\n") if chunk.strip()]
+    else:
+        return "NO DOCS GIVEN"
 
-    # Clear existing database and create new one
-    if os.path.exists(CHROMA_DIR):
-        import shutil
-        shutil.rmtree(CHROMA_DIR)
+    # Convert each chunk into a Document
+    documents = [Document(page_content=chunk) for chunk in doc_chunks]
 
+    # Embed the documents (append to existing DB)
     vectorstore = Chroma.from_documents(
-        documents=all_docs,
+        documents=documents,
         embedding=embedding_model,
         persist_directory=CHROMA_DIR,
+        collection_name="default",  # set if you're managing multiple
     )
 
-    print(f"[✓] Auto-embedded {vectorstore._collection.count()} documents.")
-    return True
+    print(f"[✓] Embedded {vectorstore._collection.count()} documents.")
+    return "Embedding complete."
 
 
 def check_vectorstore():
@@ -235,11 +238,11 @@ def setup_rag_chain():
     if _rag_chain is not None:
         return _rag_chain
 
-    if not check_vectorstore():
-        print("[*] No vector database found. Auto-embedding documents...")
-        if not embed_documents_silent():
-            print("[!] Failed to embed documents.")
-            return None
+    # if not check_vectorstore():
+    #     print("[*] No vector database found. Auto-embedding documents...")
+    #     if not embed_documents_silent():
+    #         print("[!] Failed to embed documents.")
+    #         return None
 
     vectorstore = Chroma(
         persist_directory=CHROMA_DIR,
