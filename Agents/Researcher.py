@@ -4,7 +4,7 @@ from typing_extensions import TypedDict
 from tavily import TavilyClient
 import os
 import time
-from utils import AgentState, model
+from utils import AgentState, model, tools
 
 
 '''
@@ -25,56 +25,6 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 
 load_dotenv()
-
-
-
-
-@tool
-def refine(topic: str) -> str:
-    '''This is a researching tool that finds and summarizes articles'''
-    client = TavilyClient(os.getenv("TAVILY_API_KEY"))
-    search = client.search(query=topic)
-
-    url_list = [item["url"] for item in search['results']][:3]
-    extract = client.extract(urls=url_list)
-
-    summarized_articles = []
-
-    for raw in extract['results']:
-        text = raw["raw_content"]
-        url = raw.get("url", "")
-
-        sum_prompt = f"""Summarize this article in 5-6 bullet points. DO NOT exceed that.
-Include any useful links related to the topic at the end. Skip ads or irrelevant content.
-
-Content:
-{text}
-        """
-        time.sleep(8)
-        answer = model.invoke(sum_prompt)
-        summary = f"{answer.content.strip()}\n(Source: {url})"
-        summarized_articles.append(summary)
-
-    return "\n\n---\n\n".join(summarized_articles)
-
-
-@tool
-def save(filename: str, content: str) -> str:
-    """Save content to a file."""
-    if not filename.endswith(".txt"):
-        filename += ".txt"
-    try:
-        with open(filename, 'w') as f:
-            f.write(content)
-        return f"Document saved as {filename}"
-    except Exception as e:
-        return f"Failed to save: {e}"
-
-
-
-
-tools = [refine,save]
-
 
 def research_agent(state:AgentState)->AgentState:
     '''This is the main agent that does our work'''

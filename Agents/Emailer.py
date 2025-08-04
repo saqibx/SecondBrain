@@ -4,8 +4,9 @@ from typing_extensions import TypedDict
 from tavily import TavilyClient
 import os
 import time
-from utils import AgentState, model
-
+from utils import  model, tools
+class AgentState(TypedDict):
+    doc: str
 
 '''
 Annotated - Adds meta data to our variable
@@ -30,21 +31,6 @@ load_dotenv()
 
 
 @tool
-def refine(email_contents: str) -> str:
-    '''This is an email drafting tool'''
-    email_prompt = SystemMessage(content=f'''
-        The contents attached below will give you everything you need to write the perfect email. For reference my name is
-        Saqib Mazhar, make sure you include this, I am the Co-VP External of Tech Start UCalgary, A student-led start-up incubator here at the University of 
-        Calgary.
-        
-        
-        Draft a professional, yet human sounding email,
-        
-        Here is the context: {email_contents}
-        ''')
-
-    response = model.invoke([email_prompt])
-    return response.content
 
 
 
@@ -66,7 +52,7 @@ def save(filename: str, content: str) -> str:
 
 
 
-tools = [refine,save]
+
 model = ChatOpenAI(model='gpt-4o').bind_tools(tools)
 
 def research_agent(state:AgentState)->AgentState:
@@ -113,8 +99,8 @@ def research_agent(state:AgentState)->AgentState:
 
 
 
-def cont(state:AgentState)->str:
-    '''determines whether or not we should continue refining, if not then decides to save'''
+def cont_email(state:AgentState)->str:
+    '''determines whether or not we should continue refining the emails, if not then decides to save'''
 
     messages = state['messages']
     if not messages:
@@ -138,7 +124,7 @@ graph.add_edge("research_agent","tools")
 
 graph.add_conditional_edges(
     "tools",
-    cont,
+    cont_email,
     {
         "continue": "research_agent",
         "end": END

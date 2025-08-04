@@ -96,7 +96,7 @@ def crawl_database(database_id):
     return all_notes
 
 
-def save_notes(notes, path="DATA/nottest.txt"):
+def save_notes(notes, path="DATA/NOTION.txt"):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8", newline="") as f:
         for i, note in enumerate(notes, 1):

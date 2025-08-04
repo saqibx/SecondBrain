@@ -10,6 +10,11 @@ from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
+import utils
+from typing import Optional
+
+# ------- IMPORTS FROM LOCAL FILES -----------
+
 
 load_dotenv()
 
@@ -19,136 +24,54 @@ class AgentState(TypedDict):
     research_draft: str
     email_draft: str
 
-# Tools definitions
-@tool
-def researcher(topic: str) -> str:
-    """Research a topic using Tavily and summarize key points."""
-    if not topic.strip():
-        return "ERROR: No research topic provided."
 
-    try:
-        client = TavilyClient(os.getenv("TAVILY_API_KEY"))
-        search = client.search(query=topic)
-        url_list = [item["url"] for item in search['results']][:3]
-        extract = client.extract(urls=url_list)
-
-        summarized = []
-        for raw in extract['results']:
-            text = raw.get("raw_content", "")
-            url = raw.get("url", "")
-            if not text:
-                continue
-
-            prompt = f"Summarize this article in 5 bullet points max. Skip ads. Content:\n{text}"
-            print(f"\n== RESEARCHING: {url} ==")
-
-            time.sleep(2)  # Avoid rate limits
-            local_model = ChatOpenAI(model="gpt-4o")
-            response = local_model.invoke(prompt)
-            summary = f"- {response.content.strip()}\n(Source: {url})"
-            summarized.append(summary)
-
-        result = "\n\n".join(summarized) or "ERROR: No valid summaries generated."
-        print(f"✅ Research completed for: {topic}")
-        return result
-
-    except Exception as e:
-        return f"RESEARCHER ERROR: {e}"
-
-
-@tool
-def emailer(email_contents: str) -> str:
-    """Draft a professional email using provided content."""
-    if not email_contents.strip():
-        return "ERROR: No content provided for email."
-
-    prompt = f'''
-    You are Saqib Mazhar, Co-VP External of Tech Start UCalgary, a student-led startup incubator.
-    Based on the content below, write a professional but human-sounding email. Avoid buzzwords.
-
-    Make sure to:
-    - Include a clear subject line
-    - Be concise and direct
-    - Sound genuinely interested, not robotic
-    - End with "Best regards, Saqib Mazhar"
-
-    Content:
-    {email_contents}
-    '''
-
-    try:
-        local_model = ChatOpenAI(model="gpt-4o")
-        response = local_model.invoke(prompt)
-        if not response.content.strip():
-            return "ERROR: Empty response from model."
-
-        result = response.content
-        print("✅ Email draft completed")
-        return result
-    except Exception as e:
-        return f"EMAILER ERROR: {e}"
-
-
-@tool
-def saver(filename: str, content: str) -> str:
-    """Saves content to a file."""
-    if not filename.endswith(".txt"):
-        filename += ".txt"
-    try:
-        with open(filename, 'w') as f:
-            f.write(content)
-        print(f"✅ Saved to {filename}")
-        return f"Document saved as {filename}"
-    except Exception as e:
-        return f"Failed to save: {e}"
-
-
-tools = [researcher, emailer, saver]
+tools = [utils.researcher, utils.emailer, utils.saver, utils.retriever, utils.embedder]
 model = ChatOpenAI(model="gpt-4o").bind_tools(tools)
-
-
-
-
 
 def agent_node(state: AgentState) -> AgentState:
     """Main agent that decides what to do next"""
 
     # Create system prompt
     agent_prompt = SystemMessage(content="""
-You are an intelligent assistant designed to help write professional emails by researching companies and tailoring outreach accordingly.
-
-You have access to 3 tools:
-- `researcher(topic: str)`: Use this to research a company or topic.
-- `emailer(content: str)`: Use this to write a professional email based on provided notes or research.
-- `saver(filename: str, content: str)`: Use this to save finished content to a file.
-
-Your job is to:
-1. Understand the user's request.
-2. If they want research, call researcher() with the topic
-3. If they want an email draft, call emailer() with relevant content (use research if available)
-4. If they want to save something, call saver() with filename and content
-5. You can do multiple research calls if needed for different topics
-6. Always be helpful and explain what you're doing
-
-You are Saqib Mazhar, Co-VP External of Tech Start UCalgary, a student-led startup incubator at the University of Calgary.
-
-Be deliberate and think before acting. If you're not sure what the user wants, ask for clarification.
-""")
+    You are an intelligent assistant designed to help write professional emails by researching companies and tailoring outreach accordingly.
+    
+    You have access to 4 tools:
+    - `researcher(topic: str)`: Use this to research a company or topic.
+    - `emailer(content: str)`: Use this to write a professional email based on provided notes or research.
+    - `saver(filename: str, content: str)`: Use this to save finished content to a file.
+    - retriever(query: str) use this when the user asks you something that may be stored in the personal knowledge db
+    - embedder(docs: str) : ALWAYS USE THIS AT THE END, WHENEVER A USER ASKS YOU TO SAVE SOMETHING, IMMEDIATELY AFTER THAT
+        USE THE EMBEDDER AND PASS IN THE STRING RESULT FROM RETRIEVER(). ALWAYS EMBED EVERYTHING.
+    
+    Your job is to:
+    1. Understand the user's request.
+    2. If they want research, call researcher() with the topic
+    3. If they want an email draft, call emailer() with relevant content (use research if available)
+    4. If they want to save something, call saver() with filename and content
+        4b. If they want to save the research you need to save the return value from the researcher tool, not the AI summary that is displayed in console.
+    5. You can do multiple research calls if needed for different topics
+    6. Always be helpful and explain what you're doing
+    7. If the user asks a question that is related to Tech Start or maybe something they have studied before use retriever to look for that information
+    8. At the end of the users request, always embed the result.
+    You are Saqib Mazhar, Co-VP External of Tech Start UCalgary, a student-led startup incubator at the University of Calgary.
+    
+    Be deliberate and think before acting. If you're not sure what the user wants, ask for clarification.
+    """)
 
     # Add context about prior work
     context_msg = SystemMessage(content=f"""
-Your prior work this session:
-- Research completed: {'Yes' if state['research_draft'] else 'No'}
-- Email drafted: {'Yes' if state['email_draft'] else 'No'}
-
-Research draft:
-{state['research_draft'] or 'None yet'}
-
-Email draft:
-{state['email_draft'] or 'None yet'}
-
-Use this context to avoid repeating work unless specifically requested.
-""")
+    Your prior work this session:
+    - Research completed: {'Yes' if state['research_draft'] else 'No'}
+    - Email drafted: {'Yes' if state['email_draft'] else 'No'}
+    
+    Research draft:
+    {state['research_draft'] or 'None yet'}
+    
+    Email draft:
+    {state['email_draft'] or 'None yet'}
+    
+    Use this context to avoid repeating work unless specifically requested.
+    """)
 
     # Get all messages for context
     all_messages = [agent_prompt, context_msg] + list(state['messages'])
@@ -236,11 +159,7 @@ app = workflow.compile()
 def run_session():
     """Run an interactive session"""
     print("=== AGENTIC RESEARCH & EMAIL SYSTEM ===")
-    print("Type your requests. Examples:")
-    print("- 'Research Microsoft'")
-    print("- 'Draft an email to Microsoft about partnership'")
-    print("- 'Research Google and then draft an email'")
-    print("- 'Save the email as microsoft_outreach.txt'")
+
     print("Type 'quit' to exit.\n")
 
     state = {
