@@ -10,7 +10,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
-import utils
+import Agents.utils as utils
 from typing import Optional
 
 # ------- IMPORTS FROM LOCAL FILES -----------
