@@ -4,6 +4,7 @@ from typing_extensions import TypedDict
 from tavily import TavilyClient
 import os
 import time
+
 from langgraph.graph import StateGraph, START, END
 from langchain_core.messages import BaseMessage, ToolMessage, SystemMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
@@ -195,9 +196,9 @@ def run_session():
                 state = final_state
 
             # Show current status
-            print(f"\n📊 Status:")
-            print(f"   Research: {'✅ Complete' if state['research_draft'] else '❌ None'}")
-            print(f"   Email: {'✅ Complete' if state['email_draft'] else '❌ None'}")
+            # print(f"\n📊 Status:")
+            # print(f"   Research: {'✅ Complete' if state['research_draft'] else '❌ None'}")
+            # print(f"   Email: {'✅ Complete' if state['email_draft'] else '❌ None'}")
 
         except KeyboardInterrupt:
             print("\n\nGoodbye!")

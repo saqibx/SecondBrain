@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from math import floor
 
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
@@ -11,8 +12,8 @@ from langchain_community.embeddings import OpenAIEmbeddings
 from typing import Optional  # Add this line
 import os
 import threading
+import re
 
-import os
 import time
 import TRAG as RAG
 from TRAG import *
@@ -55,8 +56,9 @@ def researcher(topic: str) -> str:
         #     prompt = f"Summarize this article in 5 bullet points max. Skip ads. Content:\n{text}"
 
         def summarize(text,url):
-            print(f"\n== RESEARCHING: {url} ==")
-            prompt = f"Summarize this article in 5 bullet points max. Skip ads. Content:\n{text}"
+            # print(f"\n== RESEARCHING: {url} ==")
+            prompt = (f"Summarize this article in 5 bullet points max. Skip ads. "
+                      f"Also do not include any ' ** ' in your response. Content:\n{text}")
             return f"= {llm.invoke(prompt).content.strip()} (source: {url}"
 
 
@@ -67,10 +69,11 @@ def researcher(topic: str) -> str:
             # response = llm.invoke(prompt)
             # summary = f"- {response.content.strip()}\n(Source: {url})"
             duration = time.time() - start_time
-            print(f"Time taken: {duration}")
+            print(f"Time taken: {floor(duration)} Seconds")
         result = "".join(summary) or "ERROR: No valid summaries generated."
-        print(f"✅ Research completed for: {topic}")
-        # print(result)
+        if "*" in result:
+            result = re.sub(r"\*", "", result)
+
         return result
 
     except Exception as e:
