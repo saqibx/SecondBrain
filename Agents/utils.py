@@ -9,7 +9,7 @@ from langchain_community.embeddings import OpenAIEmbeddings
 from typing import Optional  # Add this line
 import os
 
-import os
+from pymongo import MongoClient
 import time
 import TRAG as RAG
 from TRAG import *
@@ -22,7 +22,9 @@ embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
 
 
 # Initialize custom directories
-RAG.set_directories(CHROMA_DIR, DATA_DIR)
+# This is now handled by your ChromaDBHandler class
+db_handler = ChromaDBHandler(username="saqibx")
+
 
 load_dotenv()
 
@@ -190,4 +192,7 @@ def embedder(docs: Optional[str] = None) -> str:
     except Exception as e:
         print(f"[ERROR] Failed to embed: {e}")
         return f"EMBEDDING ERROR: {e}"
+
+
+
 # if __name__ == "__main__":
