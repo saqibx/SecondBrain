@@ -83,7 +83,7 @@ def agent_node(state: AgentState) -> AgentState:
 
     if hasattr(response, "tool_calls") and response.tool_calls:
         tool_names = [tc['name'] for tc in response.tool_calls]
-        print(f"🔧 Using tools: {tool_names}")
+        # print(f"🔧 Using tools: {tool_names}")
 
     return {
         "messages": [response],

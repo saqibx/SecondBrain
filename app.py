@@ -3,6 +3,8 @@ import os
 from dotenv import load_dotenv
 import sys
 import io
+import flask_cors
+from flask_cors import CORS
 
 # Import your agent system
 from Agents.AgentMain import app as agent_app, AgentState
@@ -11,6 +13,7 @@ from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 load_dotenv()
 app = Flask(__name__)
 app.secret_key = '67'
+CORS(app)
 
 
 @app.route('/', methods=["POST", "GET"])
@@ -106,9 +109,19 @@ def home():
                 agent_response = captured_output.getvalue()
 
                 if final_state:
-                    # Update session state with final results
-                    session['agent_state']['research_draft'] = final_state.get('research_draft', '')
-                    session['agent_state']['email_draft'] = final_state.get('email_draft', '')
+                    research_text = final_state.get('research_draft', '')
+                    email_text = final_state.get('email_draft', '')
+
+                    # 🧠 Check if printed logs duplicate the returned research/email
+                    if research_text and research_text.strip() in agent_response:
+                        agent_response = agent_response.replace(research_text.strip(), '')
+
+                    if email_text and email_text.strip() in agent_response:
+                        agent_response = agent_response.replace(email_text.strip(), '')
+
+                    # Update session state
+                    session['agent_state']['research_draft'] = research_text
+                    session['agent_state']['email_draft'] = email_text
 
                     # Store only Human and AI messages for conversation context
                     # This avoids tool message serialization complexity
@@ -137,6 +150,7 @@ def home():
                     })
 
                 session.modified = True
+                return redirect(url_for('home'))
 
             except Exception as e:
                 sys.stdout = sys.__stdout__

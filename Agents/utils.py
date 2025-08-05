@@ -34,7 +34,7 @@ def researcher(topic: str) -> str:
     """Research a topic using Tavily and summarize key points."""
     start_time = time.time()
 
-    print(topic)
+    # print(topic)
     if not topic.strip():
         return "ERROR: No research topic provided."
 
@@ -42,7 +42,7 @@ def researcher(topic: str) -> str:
         client = TavilyClient(os.getenv("TAVILY_API_KEY"))
         search = client.search(query=topic)
         url_list = [item["url"] for item in search['results']][:3]
-        print(url_list)
+        # print(url_list)
         extract = client.extract(urls=url_list)
 
         summarized = []
@@ -70,7 +70,7 @@ def researcher(topic: str) -> str:
             print(f"Time taken: {duration}")
         result = "".join(summary) or "ERROR: No valid summaries generated."
         print(f"✅ Research completed for: {topic}")
-        print(result)
+        # print(result)
         return result
 
     except Exception as e:
