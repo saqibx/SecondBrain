@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
@@ -8,6 +10,7 @@ from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import OpenAIEmbeddings
 from typing import Optional  # Add this line
 import os
+import threading
 
 import os
 import time
@@ -26,7 +29,6 @@ RAG.set_directories(CHROMA_DIR, DATA_DIR)
 
 load_dotenv()
 
-
 @tool
 def researcher(topic: str) -> str:
     """Research a topic using Tavily and summarize key points."""
@@ -44,30 +46,35 @@ def researcher(topic: str) -> str:
         extract = client.extract(urls=url_list)
 
         summarized = []
-        for raw in extract['results']:
-            text = raw.get("raw_content", "")
-            url = raw.get("url", "")
-            if not text:
-                continue
+        # for raw in extract['results']:
+        #     text = raw.get("raw_content", "")
+        #     url = raw.get("url", "")
+        #     if not text:
+        #         continue
+        #
+        #     prompt = f"Summarize this article in 5 bullet points max. Skip ads. Content:\n{text}"
 
-            prompt = f"Summarize this article in 5 bullet points max. Skip ads. Content:\n{text}"
+        def summarize(text,url):
             print(f"\n== RESEARCHING: {url} ==")
+            prompt = f"Summarize this article in 5 bullet points max. Skip ads. Content:\n{text}"
+            return f"= {llm.invoke(prompt).content.strip()} (source: {url}"
 
-            time.sleep(2.5)  # Avoid rate limits
-            response = llm.invoke(prompt)
-            summary = f"- {response.content.strip()}\n(Source: {url})"
-            summarized.append(summary)
 
+        with ThreadPoolExecutor() as pool:
+            summary = list(pool.map(lambda r: summarize(r["raw_content"], r["url"]), extract['results']))
+
+            # time.sleep(2.5)  # Avoid rate limits
+            # response = llm.invoke(prompt)
+            # summary = f"- {response.content.strip()}\n(Source: {url})"
             duration = time.time() - start_time
             print(f"Time taken: {duration}")
-        result = "\n\n".join(summarized) or "ERROR: No valid summaries generated."
+        result = "".join(summary) or "ERROR: No valid summaries generated."
         print(f"✅ Research completed for: {topic}")
         print(result)
         return result
 
     except Exception as e:
         return f"RESEARCHER ERROR: {e}"
-
 
 @tool
 def emailer(email_contents: str) -> str:
