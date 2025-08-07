@@ -59,16 +59,16 @@ def crawl_database(database_id):
             page_id = page["id"]
             print(page_id)
 
-            # 1) Fetch content as list of strings
+
             parts = fetch_block_content(page_id)
 
-            # 2) Join to a single string for the LLM
+
             text = "\n".join(parts).strip()
             if not text:
                 print("[warn] Page has no text; skipping.")
                 continue
 
-            # 3) Summarize (ensure get_summary_fromAI returns a str)
+
             try:
                 phrase = get_summary_fromAI(text)
             except Exception as e:
@@ -79,13 +79,13 @@ def crawl_database(database_id):
                 print(f"[warn] Empty summary for {page_id}; skipping.")
                 continue
 
-            # Optional: normalize newlines for consistent line counts
+
             phrase = phrase.replace("\r\n", "\n").replace("\r", "\n").strip()
 
-            # Keep in memory for now; we’ll write once at the end
+
             all_notes.append(phrase)
 
-            # (Optional) polite rate-limiting to avoid API throttling
+
             time.sleep(0.1)
 
         if response.get("has_more"):

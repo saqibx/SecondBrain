@@ -41,17 +41,14 @@ def setup_rag_chain():
 
     retriever = db_handler.db.as_retriever(search_kwargs={"k": 6})
 
-    prompt = ChatPromptTemplate.from_template("""
-You are an AI assistant answering questions based on the provided context.
+    prompt = ChatPromptTemplate.from_template(f"""
+    You are an AI assistant answering questions based on the provided context.
 
-Use the following context to answer the question. If the answer is not clearly available in the context, say "I don't have enough information to answer that question based on the available documents."
+    Use the following context to answer the question. If the answer is not clearly available in the context, say "I don't have enough information to answer that question based on the available documents."
 
-Context:
-{context}
+   
 
-Question: {question}
-
-Answer:""")
+    Answer:""")
 
     def format_docs(docs):
         return "\n\n---\n\n".join([

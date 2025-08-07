@@ -11,9 +11,9 @@ from langchain_core.tools import tool
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 import Agents.utils as utils
-from typing import Optional
 
-# ------- IMPORTS FROM LOCAL FILES -----------
+
+
 
 
 load_dotenv()
@@ -58,7 +58,7 @@ def agent_node(state: AgentState) -> AgentState:
     Be deliberate and think before acting. If you're not sure what the user wants, ask for clarification.
     """)
 
-    # Add context about prior work
+
     context_msg = SystemMessage(content=f"""
     Your prior work this session:
     - Research completed: {'Yes' if state['research_draft'] else 'No'}
@@ -73,10 +73,10 @@ def agent_node(state: AgentState) -> AgentState:
     Use this context to avoid repeating work unless specifically requested.
     """)
 
-    # Get all messages for context
+
     all_messages = [agent_prompt, context_msg] + list(state['messages'])
 
-    # Get response from model
+
     response = model.invoke(all_messages)
 
     print(f"\n🤖 AI: {response.content}")
@@ -95,26 +95,26 @@ def agent_node(state: AgentState) -> AgentState:
 def update_state(state: AgentState) -> AgentState:
     """Update research_draft and email_draft based on tool results"""
 
-    # Look for the most recent tool messages
+
     for msg in reversed(state['messages']):
         if isinstance(msg, ToolMessage):
             content = msg.content
 
-            # Check if it's research (contains "Source:" or looks like research)
+
             if ("Source:" in content or
                     "ERROR: No research topic" in content or
                     "RESEARCHER ERROR:" in content):
                 if not state['research_draft'] or "ERROR" not in content:
                     state['research_draft'] = content
 
-            # Check if it's an email (contains signature or email-like content)
+
             elif ("Best regards" in content or
                   "Subject:" in content or
                   "EMAILER ERROR:" in content):
                 if not state['email_draft'] or "ERROR" not in content:
                     state['email_draft'] = content
 
-            # Don't update for saver tool results
+
             break
 
     return state
@@ -125,34 +125,33 @@ def should_continue(state: AgentState) -> str:
 
     last_message = state["messages"][-1]
 
-    # If the last message has tool calls, execute them
+    # If the last message has tool calls execute them
     if isinstance(last_message, AIMessage) and hasattr(last_message, "tool_calls") and last_message.tool_calls:
         return "tools"
 
-    # Otherwise, we're done with this iteration
+    
     return "end"
 
 
-# Create the graph
+
 workflow = StateGraph(AgentState)
 
-# Add nodes
+
 workflow.add_node("agent", agent_node)
 workflow.add_node("tools", ToolNode(tools))
 workflow.add_node("update_state", update_state)
 
-# Set entry point
+
 workflow.set_entry_point("agent")
 
-# Add edges
 workflow.add_conditional_edges("agent", should_continue, {
     "tools": "tools",
     "end": END
 })
 workflow.add_edge("tools", "update_state")
-workflow.add_edge("update_state", "agent")  # Loop back to agent after tool execution
+workflow.add_edge("update_state", "agent")
 
-# Compile the graph
+
 app = workflow.compile()
 
 
@@ -170,7 +169,7 @@ def run_session():
 
     while True:
         try:
-            user_input = input("\n👤 You: ").strip()
+            user_input = input("\nYou: ").strip()
 
             if user_input.lower() in ['quit', 'exit', 'q']:
                 print("Goodbye!")
@@ -179,31 +178,31 @@ def run_session():
             if not user_input:
                 continue
 
-            # Add user message to state
+
             user_message = HumanMessage(content=user_input)
             state["messages"].append(user_message)
 
-            print(f"\n🚀 Processing: {user_input}")
+            print(f"\nProcessing: {user_input}")
 
-            # Run the workflow
+
             final_state = None
             for step_output in app.stream(state, stream_mode="values"):
                 final_state = step_output
 
-            # Update our state with the final result
+
             if final_state:
                 state = final_state
 
-            # Show current status
+
             print(f"\n📊 Status:")
-            print(f"   Research: {'✅ Complete' if state['research_draft'] else '❌ None'}")
-            print(f"   Email: {'✅ Complete' if state['email_draft'] else '❌ None'}")
+            print(f"   Research: {'Complete' if state['research_draft'] else ' None'}")
+            print(f"   Email: {'Complete' if state['email_draft'] else ' None'}")
 
         except KeyboardInterrupt:
             print("\n\nGoodbye!")
             break
         except Exception as e:
-            print(f"❌ Error: {e}")
+            print(f" Error: {e}")
             continue
 
 
@@ -222,20 +221,18 @@ def run_single_request(request: str):
         final_state = step_output
 
     if final_state:
-        print(f"\n📊 Final Results:")
+        print(f"\nFinal Results:")
         if final_state['research_draft']:
-            print(f"\n📝 Research:\n{final_state['research_draft']}")
+            print(f"\nResearch:\n{final_state['research_draft']}")
         if final_state['email_draft']:
-            print(f"\n📧 Email:\n{final_state['email_draft']}")
+            print(f"\nEmail:\n{final_state['email_draft']}")
 
     return final_state
 
 
 if __name__ == "__main__":
-    # You can run either interactively or test single requests
+
 
     # Interactive mode
     run_session()
 
-    # Or test single requests like this:
-    # run_single_request("Research OpenAI and draft an email about collaboration")

@@ -1,6 +1,6 @@
 import os
 import bcrypt
-import jwt  # <-- This is PyJWT, NOT google.auth.jwt
+import jwt
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from pymongo import MongoClient
@@ -21,9 +21,9 @@ class User:
         if plain_password and not already_hashed:
             self.password = self.hash_password(plain_password)
         elif plain_password and already_hashed:
-            self.password = plain_password  # It's already hashed
+            self.password = plain_password
         else:
-            self.password = ""  # Will be set later when loading from DB
+            self.password = ""
 
         self.chroma_name = username
 
@@ -33,16 +33,14 @@ class User:
 
     def verify_password(self, input_password: str) -> bool:
         try:
-            print(f"[DEBUG] Verifying password for user: {self.username}")
-            print(f"[DEBUG] Input password: {input_password}")
-            print(f"[DEBUG] Stored hash starts with: {self.password[:10]}...")
 
-            # Make sure we have a password hash
+
+
             if not self.password:
                 print("[DEBUG] No password hash stored")
                 return False
 
-            # Verify using bcrypt
+
             result = bcrypt.checkpw(input_password.encode('utf-8'), self.password.encode('utf-8'))
             print(f"[DEBUG] Password verification result: {result}")
             return result
@@ -71,7 +69,7 @@ class User:
 
             # print(f"[DEBUG] User found in database: {user['username']}")
 
-            # Create User object with the database data
+
             u = User(
                 user_id=user.get("user_id", ""),
                 username=user["username"],
@@ -116,49 +114,6 @@ class User:
 
     def __repr__(self):
         return f"User(user_id='{self.user_id}', username='{self.username}')"
-
-
-# # Test function to help debug your user system
-# def test_user_authentication():
-#     """Test function to verify your user system works"""
-#     try:
-#         print("=== Testing User Authentication ===")
-#
-#         # Test 1: Try to get an existing user
-#         test_username = "saqib"  # Replace with an actual username from your DB
-#         user = User.get_user(test_username)
-#
-#         if user:
-#             print(f"✓ User found: {user}")
-#
-#             # Test password verification with a known password
-#             test_password = "your_actual_password"  # Replace with actual password
-#             is_valid = user.verify_password(test_password)
-#             print(f"✓ Password verification: {is_valid}")
-#
-#             # Test with wrong password
-#             wrong_password = "wrongpassword"
-#             is_invalid = user.verify_password(wrong_password)
-#             print(f"✓ Wrong password verification: {is_invalid}")
-#
-#         else:
-#             print(f"✗ User '{test_username}' not found")
-#
-#             # Optionally create a test user
-#             print("Creating test user...")
-#             new_user = User(
-#                 user_id="test123",
-#                 username="testuser",
-#                 plain_password="testpass123",
-#                 already_hashed=False
-#             )
-#             result = new_user.set_user()
-#             print(f"✓ Test user created: {result}")
-#
-#     except Exception as e:
-#         print(f"✗ Test error: {e}")
-#         import traceback
-#         traceback.print_exc()
 
 
 

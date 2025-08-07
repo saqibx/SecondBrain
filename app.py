@@ -9,7 +9,7 @@ import re
 from Classes.ChromaDBHandler import ChromaDBHandler
 from Classes.Users import User
 
-# Import your agent system
+
 from Agents.AgentMain import app as agent_app, AgentState
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 
@@ -18,9 +18,9 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("APP_SECRET_KEY")
 
-# Proper CORS configuration
+
 CORS(app,
-     origins=["http://localhost:8080", "http://127.0.0.1:8080"],  # Specify allowed origins
+     origins=["http://localhost:8080", "http://127.0.0.1:8080"],
      supports_credentials=True,
      allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
@@ -30,7 +30,7 @@ CORS(app,
 @app.route('/api/login', methods=["POST", "OPTIONS"])
 def login():
     """API endpoint for login"""
-    # Handle preflight OPTIONS request
+
     if request.method == "OPTIONS":
         response = jsonify({"status": "ok"})
         response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
@@ -50,7 +50,7 @@ def login():
         username = data['username']
         password = data['password']
 
-        # Get user from database
+
         existing_user = User.get_user(username=username)
 
         if existing_user is None:
@@ -143,7 +143,7 @@ def chat():
         response.headers["Access-Control-Allow-Credentials"] = "true"
         return response, 401
 
-    # Initialize session state for agent if not exists
+
     if 'agent_state' not in session:
         session['agent_state'] = {
             'messages': [],
@@ -167,10 +167,10 @@ def chat():
         return response, 400
 
     try:
-        # Create new human message
+
         new_human_message = HumanMessage(content=user_input)
 
-        # Build complete message history for the agent
+
         agent_messages = []
 
         for stored_msg in session['agent_state']['messages']:
@@ -179,25 +179,25 @@ def chat():
             elif stored_msg['type'] == 'ai':
                 agent_messages.append(AIMessage(content=stored_msg['content']))
 
-        # Add the new human message
+
         agent_messages.append(new_human_message)
 
-        # Create agent state with full conversation history
+
         state = {
             "messages": agent_messages,
             "research_draft": session['agent_state']['research_draft'],
             "email_draft": session['agent_state']['email_draft']
         }
 
-        # Capture the agent output
+
         captured_output = io.StringIO()
         sys.stdout = captured_output
 
         try:
-            # Run the agent
+
             final_state = agent_app.invoke(state)
 
-            # Restore stdout
+
             sys.stdout = sys.__stdout__
             agent_response = captured_output.getvalue()
 
@@ -205,18 +205,18 @@ def chat():
                 research_text = final_state.get('research_draft', '')
                 email_text = final_state.get('email_draft', '')
 
-                # Clean up duplicate content in response
+
                 if research_text and research_text.strip() in agent_response:
                     agent_response = agent_response.replace(research_text.strip(), '')
 
                 if email_text and email_text.strip() in agent_response:
                     agent_response = agent_response.replace(email_text.strip(), '')
 
-                # Update session state
+
                 session['agent_state']['research_draft'] = research_text
                 session['agent_state']['email_draft'] = email_text
 
-                # Store only Human and AI messages for conversation context
+
                 serializable_messages = []
                 for msg in final_state.get('messages', []):
                     if isinstance(msg, HumanMessage):
@@ -232,7 +232,7 @@ def chat():
 
                 session['agent_state']['messages'] = serializable_messages
 
-                # Add to conversation history for display
+
                 conversation_entry = {
                     'user': user_input,
                     'agent': agent_response,
@@ -244,7 +244,7 @@ def chat():
 
             session.modified = True
 
-            # Return the response data
+
             response = jsonify({
                 "success": True,
                 "response": agent_response,
@@ -302,7 +302,7 @@ def get_state():
         response.headers["Access-Control-Allow-Credentials"] = "true"
         return response, 401
 
-    # Initialize session state if not exists
+
     if 'agent_state' not in session:
         session['agent_state'] = {
             'messages': [],
@@ -350,7 +350,7 @@ def clear_session():
     return response, 200
 
 
-# Legacy route for backward compatibility (optional)
+
 @app.route('/', methods=["GET"])
 def index():
     """Redirect to frontend or return API info"""
@@ -373,7 +373,7 @@ def index():
 @app.route('/api/register', methods=["POST", "OPTIONS"])
 def register():
     """API endpoint for user registration"""
-    # Handle preflight OPTIONS request
+
     if request.method == "OPTIONS":
         response = jsonify({"status": "ok"})
         response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
@@ -396,7 +396,7 @@ def register():
         password = data.get('password', '').strip()
         user_id = data.get('user_id', '').strip()
 
-        # Validation
+
         if not username:
             response = jsonify({"success": False, "error": "Username is required"})
             response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
@@ -415,12 +415,12 @@ def register():
             response.headers["Access-Control-Allow-Credentials"] = "true"
             return response, 400
 
-        # Generate user_id if not provided
+
         if not user_id:
             import uuid
             user_id = str(uuid.uuid4())
 
-        # Check if username already exists
+
         existing_user = User.get_user(username=username)
         if existing_user:
             response = jsonify({"success": False, "error": "Username already exists"})
@@ -428,7 +428,7 @@ def register():
             response.headers["Access-Control-Allow-Credentials"] = "true"
             return response, 409  # Conflict status code
 
-        # Create new user
+
         new_user = User(
             user_id=user_id,
             username=username,
@@ -436,11 +436,11 @@ def register():
             already_hashed=False  # This is a new password that needs hashing
         )
 
-        # Save user to database
+
         result = new_user.set_user()
 
         if "Finished Pushing To DB" in result:
-            # Registration successful, log the user in
+
             session['admin'] = True
             session['username'] = username
             session['user_id'] = user_id
@@ -455,9 +455,9 @@ def register():
             })
             response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
             response.headers["Access-Control-Allow-Credentials"] = "true"
-            return response, 201  # Created status code
+            return response, 201
         else:
-            # Registration failed
+
             response = jsonify({
                 "success": False,
                 "error": "Failed to create user account"
