@@ -1,32 +1,67 @@
+from concurrent.futures.thread import ThreadPoolExecutor
+from math import floor
+
 from dotenv import load_dotenv
+from googleapiclient.errors import HttpError
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from tavily import TavilyClient
 from langchain_core.documents import Document
-from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import OpenAIEmbeddings
-from typing import Optional  # Add this line
+from typing import Optional
 import os
-
-from pymongo import MongoClient
+from flask import session
 import time
-import TRAG as RAG
-from TRAG import *
-# Set your custom ChromaDB directory here
-CHROMA_DIR = r"C:\Users\saqib\PycharmProjects\SecondBrain\chroma_db"  # Default path - change this to your actual path
-DATA_DIR = r"C:\Users\saqib\PycharmProjects\SecondBrain\DATA"
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+import datetime
 
 
-embedding_model = OpenAIEmbeddings(model="text-embedding-3-large")
-
-
-# Initialize custom directories
-# This is now handled by your ChromaDBHandler class
-db_handler = ChromaDBHandler(username="saqibx")
-
+# Import your custom classes
+from Classes.Users import User
+from Classes.ChromaDBHandler import ChromaDBHandler
 
 load_dotenv()
+
+# Initialize the LLM
+llm = ChatOpenAI(model="gpt-4o")
+
+
+def get_user_chroma_handler():
+    """
+    Get the ChromaDBHandler for the current authenticated user.
+    Returns None if no user is authenticated.
+    """
+    try:
+        username = session.get("username")
+        if not username:
+            print("[DEBUG] No username in session for ChromaDB handler")
+            return None
+
+        # Verify user exists in database
+        user = User.get_user(username=username)
+        if not user:
+            print(f"[DEBUG] User {username} not found in database")
+            return None
+
+        # Create and return ChromaDB handler for this user
+        return ChromaDBHandler(username=username)
+    except Exception as e:
+        print(f"[DEBUG] Error getting ChromaDB handler: {e}")
+        return None
+
+
+def get_current_user():
+
+    try:
+        username = session.get("username")
+        if not username:
+            return None
+
+        return User.get_user(username=username)
+    except Exception as e:
+        print(f"[DEBUG] Error getting current user: {e}")
+        return None
 
 
 @tool
@@ -34,164 +69,221 @@ def researcher(topic: str) -> str:
     """Research a topic using Tavily and summarize key points."""
     start_time = time.time()
 
-    print(topic)
+    # print(f"[RESEARCHER] Starting research on: {topic}")
+
     if not topic.strip():
         return "ERROR: No research topic provided."
 
+    # Check if user is authenticated
+    current_user = get_current_user()
+    if not current_user:
+        return "ERROR: User not authenticated for research."
+
     try:
         client = TavilyClient(os.getenv("TAVILY_API_KEY"))
+        if not client:
+            return "ERROR: Tavily API key not configured."
+
         search = client.search(query=topic)
+
+        if not search.get('results'):
+            return f"ERROR: No search results found for topic: {topic}"
+
         url_list = [item["url"] for item in search['results']][:3]
-        print(url_list)
+        print(f"[RESEARCHER] Found URLs: {url_list}")
+
         extract = client.extract(urls=url_list)
+        if not extract.get('results'):
+            return "ERROR: Failed to extract content from URLs."
 
-        summarized = []
-        for raw in extract['results']:
-            text = raw.get("raw_content", "")
-            url = raw.get("url", "")
-            if not text:
-                continue
+        def summarize(text,url):
+            prompt = f"""
+            Summarize this article in 5 bullet points max. 
+            Focus on key facts and insights. Skip ads and irrelevant content.
 
-            prompt = f"Summarize this article in 5 bullet points max. Skip ads. Content:\n{text}"
-            print(f"\n== RESEARCHING: {url} ==")
+            Content:
+            {text}
+            """
+            return f"{llm.invoke(prompt).content.strip()} (Source: {url}"
 
-            time.sleep(2.5)  # Avoid rate limits
-            response = llm.invoke(prompt)
-            summary = f"- {response.content.strip()}\n(Source: {url})"
-            summarized.append(summary)
+        with ThreadPoolExecutor() as pool:
+            summary = list(pool.map(lambda r: summarize(r["raw_content"], r['url']), extract['results']))
 
-            duration = time.time() - start_time
-            print(f"Time taken: {duration}")
-        result = "\n\n".join(summarized) or "ERROR: No valid summaries generated."
-        print(f"✅ Research completed for: {topic}")
-        print(result)
+        duration = time.time() - start_time
+        print(f"Searched In {floor(duration)} Seconds")
+
+        if not summary:
+            return "ERROR: No valid summaries generated from research."
+
+        result = "".join(summary)
         return result
 
     except Exception as e:
+        print(f"[RESEARCHER] ERROR: {e}")
         return f"RESEARCHER ERROR: {e}"
 
 
 @tool
 def emailer(email_contents: str) -> str:
     """Draft a professional email using provided content."""
+    # print("[EMAILER] Starting email draft...")
+
     if not email_contents.strip():
         return "ERROR: No content provided for email."
 
+    # Check if user is authenticated
+    current_user = get_current_user()
+    if not current_user:
+        return "ERROR: User not authenticated for email drafting."
+
+    # Get user's name for personalization (defaulting to username if no full name available)
+    user_name = getattr(current_user, 'full_name', current_user.username)
+    username = current_user.username
+
     prompt = f'''
-    You are Saqib Mazhar, Co-VP External of Tech Start UCalgary, a student-led startup incubator.
-    Based on the content below, write a professional but human-sounding email. Avoid buzzwords.
+    Based on the content below, write a professional but human-sounding email. Avoid buzzwords and corporate speak.
 
     Make sure to:
-    - Include a clear subject line
+    - Include a clear, specific subject line
     - Be concise and direct
-    - Sound genuinely interested, not robotic
-    - End with "Best regards, Saqib Mazhar"
+    - Sound genuinely interested and personable, not robotic
+    - Use proper email formatting
+    - End with "Best regards, {user_name}"
 
-    Content:
+    Content to base the email on:
     {email_contents}
     '''
 
     try:
-
         response = llm.invoke(prompt)
-        if not response.content.strip():
-            return "ERROR: Empty response from model."
+        if not response.content or not response.content.strip():
+            return "ERROR: Empty response from email model."
 
-        result = response.content
-        print("✅ Email draft completed")
+        result = response.content.strip()
+        print("[EMAILER] ✅ Email draft completed")
         return result
+
     except Exception as e:
+        print(f"[EMAILER] ERROR: {e}")
         return f"EMAILER ERROR: {e}"
 
 
 @tool
 def saver(filename: str, content: str) -> str:
-    """Saves content to a file."""
-    if not filename.endswith(".txt"):
-        filename += ".txt"
+    """Saves content to a file in the user's personal directory."""
+    print(f"[SAVER] Attempting to save file: {filename}")
+
+    if not filename or not content:
+        return "ERROR: Filename and content are required."
+
+    # Check if user is authenticated
+    current_user = get_current_user()
+    if not current_user:
+        return "ERROR: User not authenticated for file saving."
+
     try:
-        with open(filename, 'w') as f:
+        # Create user-specific directory
+        user_dir = f"DATA/{current_user.username}"
+        os.makedirs(user_dir, exist_ok=True)
+
+        # Ensure filename has .txt extension
+        if not filename.endswith(".txt"):
+            filename += ".txt"
+
+        # Create full file path
+        filepath = os.path.join(user_dir, filename)
+
+        # Save the file
+        with open(filepath, 'w', encoding='utf-8') as f:
             f.write(content)
-        print(f"✅ Saved to {filename}")
-        return f"Document saved as {filename}"
+
+        print(f"[SAVER] ✅ Saved to {filepath}")
+        return f"Document saved as {filename} in your personal directory."
+
     except Exception as e:
-        return f"Failed to save: {e}"
+        print(f"[SAVER] ERROR: {e}")
+        return f"SAVER ERROR: Failed to save file - {e}"
 
 
 @tool
 def retriever(question: str) -> str:
-    """Query the RAG system to get information from personal knowledge base."""
+    """Query the user's personal knowledge base using ChromaDB."""
+    # print(f"[RETRIEVER] Querying knowledge base: {question}")
+
     if not question.strip():
-        return "ERROR: No question provided for RAG query."
+        return "ERROR: No question provided for knowledge base query."
+
+    # Get user's ChromaDB handler
+    chroma_handler = get_user_chroma_handler()
+    if not chroma_handler:
+        return "ERROR: User not authenticated or ChromaDB handler unavailable."
 
     try:
-        # Use the new query_rag function instead of start()
-        print("about to print")
-        answer = RAG.query_rag(question)
-        print("just printed")
-        return answer
+        # Query the user's personal knowledge base
+        results = chroma_handler.query(
+            query_text=question,
+            k=5,  # Get top 5 relevant documents
+            include_metadata=True
+        )
+
+        if not results:
+            return f"No relevant information found in your knowledge base for: {question}"
+
+        # Format the results for the agent
+        formatted_response = f"Found {len(results)} relevant documents in your knowledge base:\n\n"
+
+        for i, doc in enumerate(results, 1):
+            formatted_response += f"**Result {i}:**\n{doc['content']}\n\n"
+
+            # Include metadata if available
+            if 'metadata' in doc and doc['metadata']:
+                formatted_response += f"*Metadata: {doc['metadata']}*\n\n"
+
+        print(f"[RETRIEVER] ✅ Found {len(results)} relevant documents")
+        return formatted_response.strip()
+
     except Exception as e:
-        return f"RAG ERROR: {e}"
+        print(f"[RETRIEVER] ERROR: {e}")
+        return f"RETRIEVER ERROR: Failed to query knowledge base - {e}"
+
 
 @tool
 def embedder(docs: Optional[str] = None) -> str:
-    """Embed documents. Splits input string by newlines. If none provided, uses default ones."""
-    print("[*] Auto-embedding documents...")
+    """Embed documents into the user's personal knowledge base."""
+    # print("[EMBEDDER] Starting document embedding process...")
 
     if not docs or not docs.strip():
-        return "NO DOCS GIVEN"
+        return "ERROR: No documents provided for embedding."
+
+    # Get user's ChromaDB handler
+    chroma_handler = get_user_chroma_handler()
+    current_user = get_current_user()
+
+    if not chroma_handler or not current_user:
+        return "ERROR: User not authenticated or ChromaDB handler unavailable."
 
     try:
-        # Format the input into a tagging prompt for GPT
-        doc_prompt = f'''
-        You are a tagging assistant.
-        
-        For each chunk of the text below, summarize it in the following format:
-        Topic: Researched Items, [then specify what the topic is]
-        Notes: Copy the content word for word
-        
-        Separate each new entry with a newline.
-        
-        Text:
-        {docs}
-        '''
+        # Process the documents using ChromaDB handler's embed_documents method
+        # print(f"[EMBEDDER] Processing documents for user: {current_user.username}")
 
+        # The ChromaDBHandler will handle the summarization and embedding
+        chroma_handler.embed_documents(
+            input_text=docs,
+            rebuild=False  # Add to existing collection, don't rebuild
+        )
 
-        response = llm.invoke([HumanMessage(content=doc_prompt)])
-        clean_text = response.content if response.content else None
+        # Get total count of documents in user's collection
+        total_count = chroma_handler.db._collection.count()
 
-        if not clean_text:
-            return "NO DOCS GIVEN"
-
-        # Split the response into chunks
-        doc_chunks = [chunk.strip() for chunk in clean_text.split("\n") if chunk.strip()]
-        documents = [Document(page_content=chunk) for chunk in doc_chunks]
-
-        # Check if vectorstore exists, if not create it
-        if os.path.exists(CHROMA_DIR):
-            # Load existing vectorstore and add documents
-            vectorstore = Chroma(
-                embedding_function=embedding_model,
-                persist_directory=CHROMA_DIR,
-            )
-            vectorstore.add_documents(documents)
-            print(f"[✓] Added {len(documents)} documents to existing vectorstore.")
-        else:
-            # Create new vectorstore
-            vectorstore = Chroma.from_documents(
-                documents=documents,
-                embedding=embedding_model,
-                persist_directory=CHROMA_DIR,
-            )
-            print(f"[✓] Created new vectorstore with {len(documents)} documents.")
-
-        total_count = vectorstore._collection.count()
-        print(f"[✓] Total documents in vectorstore: {total_count}")
-        return f"Embedding complete. Added {len(documents)} documents. Total: {total_count}"
+        # print(f"[EMBEDDER] ✅ Documents embedded successfully")
+        return f"Documents successfully embedded into your personal knowledge base. Total documents: {total_count}"
 
     except Exception as e:
-        print(f"[ERROR] Failed to embed: {e}")
-        return f"EMBEDDING ERROR: {e}"
+        print(f"[EMBEDDER] ERROR: {e}")
+        return f"EMBEDDER ERROR: Failed to embed documents - {e}"
+
+
+
 
 
 

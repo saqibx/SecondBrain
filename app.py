@@ -19,12 +19,12 @@ app = Flask(__name__)
 app.secret_key = os.getenv("APP_SECRET_KEY")
 
 # Proper CORS configuration
-CORS(app, 
+CORS(app,
      origins=["http://localhost:8080", "http://127.0.0.1:8080"],  # Specify allowed origins
      supports_credentials=True,
      allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-)
+     )
 
 
 @app.route('/api/login', methods=["POST", "OPTIONS"])
@@ -39,6 +39,8 @@ def login():
         response.headers["Access-Control-Allow-Credentials"] = "true"
         return response
 
+    session.clear()
+
     data = request.get_json()
 
     if not data:
@@ -48,20 +50,16 @@ def login():
         username = data['username']
         password = data['password']
 
-
-
         # Get user from database
         existing_user = User.get_user(username=username)
 
         if existing_user is None:
             return jsonify({"success": False, "error": "User not found"}), 404
 
-        print("Submitted password:", password)
-        print("Password in DB:", existing_user.password)
         if existing_user and existing_user.verify_password(password):
             session['admin'] = True
             session['username'] = username
-            
+
             response = jsonify({
                 "success": True,
                 "message": "Login successful"
@@ -101,7 +99,8 @@ def logout():
 
     session.pop('admin', None)
     session.pop('username', None)
-    
+    session.clear()
+
     response = jsonify({"success": True, "message": "Logged out successfully"})
     response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
     response.headers["Access-Control-Allow-Credentials"] = "true"
@@ -363,12 +362,121 @@ def index():
             "GET /api/auth/status": "Check authentication status",
             "POST /api/chat": "Send message to agent",
             "GET /api/state": "Get current agent state",
-            "POST /api/clear": "Clear agent session"
+            "POST /api/clear": "Clear agent session",
+            "POST /api/register": "Register new account"
         }
     })
     response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
     response.headers["Access-Control-Allow-Credentials"] = "true"
     return response, 200
+
+@app.route('/api/register', methods=["POST", "OPTIONS"])
+def register():
+    """API endpoint for user registration"""
+    # Handle preflight OPTIONS request
+    if request.method == "OPTIONS":
+        response = jsonify({"status": "ok"})
+        response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
+        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response
+
+    session.clear()
+    data = request.get_json()
+
+    if not data:
+        response = jsonify({"error": "No data provided"})
+        response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response, 400
+
+    try:
+        username = data.get('username', '').strip()
+        password = data.get('password', '').strip()
+        user_id = data.get('user_id', '').strip()
+
+        # Validation
+        if not username:
+            response = jsonify({"success": False, "error": "Username is required"})
+            response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            return response, 400
+
+        if not password:
+            response = jsonify({"success": False, "error": "Password is required"})
+            response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            return response, 400
+
+        if len(password) < 6:
+            response = jsonify({"success": False, "error": "Password must be at least 6 characters long"})
+            response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            return response, 400
+
+        # Generate user_id if not provided
+        if not user_id:
+            import uuid
+            user_id = str(uuid.uuid4())
+
+        # Check if username already exists
+        existing_user = User.get_user(username=username)
+        if existing_user:
+            response = jsonify({"success": False, "error": "Username already exists"})
+            response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            return response, 409  # Conflict status code
+
+        # Create new user
+        new_user = User(
+            user_id=user_id,
+            username=username,
+            plain_password=password,
+            already_hashed=False  # This is a new password that needs hashing
+        )
+
+        # Save user to database
+        result = new_user.set_user()
+
+        if "Finished Pushing To DB" in result:
+            # Registration successful, log the user in
+            session['admin'] = True
+            session['username'] = username
+            session['user_id'] = user_id
+
+            response = jsonify({
+                "success": True,
+                "message": "Registration successful and logged in",
+                "user": {
+                    "user_id": user_id,
+                    "username": username
+                }
+            })
+            response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            return response, 201  # Created status code
+        else:
+            # Registration failed
+            response = jsonify({
+                "success": False,
+                "error": "Failed to create user account"
+            })
+            response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            return response, 500
+
+    except Exception as e:
+        print(f"Registration error: {e}")
+        response = jsonify({
+            "success": False,
+            "error": f"Registration error: {str(e)}"
+        })
+        response.headers["Access-Control-Allow-Origin"] = "http://localhost:8080"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        return response, 500
+
+
 
 
 if __name__ == "__main__":

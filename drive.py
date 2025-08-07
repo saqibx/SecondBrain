@@ -16,8 +16,6 @@ SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID")
 CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET")
 
-print(CLIENT_ID)
-print(CLIENT_SECRET)
 #auth
 client_config = {
     "installed": {

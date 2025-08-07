@@ -4,14 +4,15 @@ from langchain_openai import ChatOpenAI
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.vectorstores import Chroma
-
+from Agents.utils import get_current_user
 from Classes.ChromaDBHandler import ChromaDBHandler
 from google import genai
 
 load_dotenv()
 
-CHROMA_DIR = "chroma_db"
-USERNAME = "saqibx"  # or make this dynamic later
+# CHROMA_DIR = "chroma_db"
+
+USERNAME = get_current_user().username
 llm = ChatOpenAI(model="gpt-4.1-mini")
 
 _rag_chain = None
@@ -25,7 +26,7 @@ def embed_documents_from_text(input_text: str, rebuild: bool = False):
 def check_vectorstore():
     try:
         vectorstore = Chroma(
-            persist_directory=CHROMA_DIR,
+            persist_directory=db_handler.chroma_dir,
             embedding_function=db_handler.embedding_model
         )
         return vectorstore._collection.count() > 0
@@ -80,13 +81,8 @@ def query_rag(question: str) -> str:
 
 def run_llm(text):
     prompt = f'''
-    Your job is to determine what category this text may be related to. Here are the possible options:
-    Possible Categories: Sponsorship, meeting, executives, Misc, Club History
-
-    No other possible categories. If the text asks about money assume its related to sponsorship,
-    if the text asks about anything related to meetings assume its about meeting. If anything else assume its misc.
-
-    DO NOT ADD ANYTHING TO YOUR RESPONSE BUT THE CATEGORY. NO GREETING NO NOTHING. JUST THE ANSWER.
+    Your job is to determine what category this text may be related to, Use boarder terms instead of the nichest categorization. 
+    DO NOT ADD ANYTHING TO YOUR RESPONSE BUT THE CATEGORY.
 
     {text}
     '''
