@@ -131,7 +131,7 @@ def handle_options_request(allowed_methods: str = "GET, POST, PUT, DELETE, OPTIO
 def require_auth(f: Callable) -> Callable:
     """
     Decorator to require authentication via session.
-    
+
     Usage:
         @app.route('/api/protected', methods=['POST'])
         @require_auth
@@ -141,16 +141,20 @@ def require_auth(f: Callable) -> Callable:
     @wraps(f)
     def decorated_function(*args, **kwargs):
         from flask import session
-        
+
+        # Allow OPTIONS requests to pass through without authentication
+        if request.method == "OPTIONS":
+            return handle_options_request()
+
         if not session.get("admin") or not session.get("username"):
             return error_response(
                 "Not authenticated",
                 status_code=401,
                 error_code="AUTH_REQUIRED"
             )
-        
+
         return f(*args, **kwargs)
-    
+
     return decorated_function
 
 
