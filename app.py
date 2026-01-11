@@ -18,7 +18,7 @@ from flask_limiter.util import get_remote_address
 from flask_session import Session
 from dotenv import load_dotenv
 
-from config import get_config
+from config import Config
 from logging_config import setup_logging, get_logger
 from utils import (
     error_response,
@@ -39,16 +39,29 @@ load_dotenv()
 # Setup logging
 setup_logging(log_level=os.getenv("LOG_LEVEL", "INFO"))
 logger = get_logger(__name__)
-
+from config get get_config
 # Get configuration
 config = get_config()
 
 # Initialize Flask app
 app = Flask(__name__)
 app.config.from_object(config)
+import redis as redis_lib
+
+if config.SESSION_TYPE == "redis":
+    app.config["SESSION_REDIS"] = redis_lib.from_url(config.REDIS_URL)
 
 # Initialize session
+import redis
+from flask_session import Session
+
+app.config.from_object(Config)
+
+if app.config["SESSION_TYPE"] == "redis":
+    app.config["SESSION_REDIS"] = redis.from_url(app.config["REDIS_URL"])
+
 Session(app)
+
 
 # Initialize CORS with dynamic origins from config
 CORS(

@@ -11,19 +11,21 @@ redis==5.0.1
 
 # LLM and AI
 langchain==0.1.13
-langchain-core==0.1.33
+langchain-core==0.1.52
 langchain-openai==0.1.7
-langchain-community==0.1.26
+langchain-community==0.0.38
 langchain-text-splitters==0.0.1
-openai==1.6.1
-tavily-python==0.3.10
+langgraph==0.0.40
+
+openai>=1.24.0,<2.0.0
+tavily-python==0.3.9
 
 # Vector store
 chromadb==0.4.24
 
 # Security
 bcrypt==4.1.1
-PyJWT==2.8.1
+PyJWT==2.9.0
 
 # Validation
 pydantic==2.5.2

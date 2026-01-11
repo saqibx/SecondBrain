@@ -22,10 +22,10 @@ class Config:
     SESSION_REFRESH_EACH_REQUEST = True
     
     # Redis
-    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
     
     # MongoDB
-    MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+    MONGO_URI = os.getenv("MONGO_URI", "mongodb://mongodby:27017")
     MONGODB_CLIENT = os.getenv("MONGODB_CLIENT", "secondbrain")
     MONGODB_COLLECTION = os.getenv("MONGODB_COLLECTION", "users")
     

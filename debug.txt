@@ -1,0 +1,201 @@
+docker compose -f docker-compose.prod.yml logs --tail=200 app
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/app/base.py", line 67, in wsgi
+secondbrain_app  |     self.callable = self.load()
+secondbrain_app  |                     ^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/app/wsgiapp.py", line 58, in load
+secondbrain_app  |     return self.load_wsgiapp()
+secondbrain_app  |            ^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/app/wsgiapp.py", line 48, in load_wsgiapp
+secondbrain_app  |     return util.import_app(self.app_uri)
+secondbrain_app  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/util.py", line 371, in import_app
+secondbrain_app  |     mod = importlib.import_module(module)
+secondbrain_app  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+secondbrain_app  |     return _bootstrap._gcd_import(name[level:], package, level)
+secondbrain_app  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+secondbrain_app  |   File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+secondbrain_app  |   File "/app/app.py", line 44, in <module>
+secondbrain_app  |     config = get_config()
+secondbrain_app  |              ^^^^^^^^^^
+secondbrain_app  | NameError: name 'get_config' is not defined
+secondbrain_app  | [2026-01-11 20:28:26 +0000] [8] [INFO] Worker exiting (pid: 8)
+secondbrain_app  | [2026-01-11 20:28:26 +0000] [1] [ERROR] Worker (pid:7) exited with code 3
+secondbrain_app  | [2026-01-11 20:28:26 +0000] [1] [ERROR] Worker (pid:8) was sent SIGTERM!
+secondbrain_app  | [2026-01-11 20:28:27 +0000] [1] [ERROR] Shutting down: Master
+secondbrain_app  | [2026-01-11 20:28:27 +0000] [1] [ERROR] Reason: Worker failed to boot.
+secondbrain_app  | [2026-01-11 20:29:29 +0000] [1] [INFO] Starting gunicorn 21.2.0
+secondbrain_app  | [2026-01-11 20:29:29 +0000] [1] [INFO] Listening at: http://0.0.0.0:5895 (1)
+secondbrain_app  | [2026-01-11 20:29:29 +0000] [1] [INFO] Using worker: gthread
+secondbrain_app  | [2026-01-11 20:29:29 +0000] [7] [INFO] Booting worker with pid: 7
+secondbrain_app  | [2026-01-11 20:29:29 +0000] [8] [INFO] Booting worker with pid: 8
+secondbrain_app  | 2026-01-11 20:29:32 - root - INFO - Logging configured at INFO level
+secondbrain_app  | [2026-01-11 20:29:32 +0000] [8] [ERROR] Exception in worker process
+secondbrain_app  | Traceback (most recent call last):
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/arbiter.py", line 609, in spawn_worker
+secondbrain_app  |     worker.init_process()
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/workers/gthread.py", line 95, in init_process
+secondbrain_app  |     super().init_process()
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/workers/base.py", line 134, in init_process
+secondbrain_app  |     self.load_wsgi()
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/workers/base.py", line 146, in load_wsgi
+secondbrain_app  |     self.wsgi = self.app.wsgi()
+secondbrain_app  |                 ^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/app/base.py", line 67, in wsgi
+secondbrain_app  |     self.callable = self.load()
+secondbrain_app  |                     ^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/app/wsgiapp.py", line 58, in load
+secondbrain_app  |     return self.load_wsgiapp()
+secondbrain_app  |            ^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/app/wsgiapp.py", line 48, in load_wsgiapp
+secondbrain_app  |     return util.import_app(self.app_uri)
+secondbrain_app  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/util.py", line 371, in import_app
+secondbrain_app  |     mod = importlib.import_module(module)
+secondbrain_app  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+secondbrain_app  |     return _bootstrap._gcd_import(name[level:], package, level)
+secondbrain_app  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+secondbrain_app  |   File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+secondbrain_app  |   File "/app/app.py", line 44, in <module>
+secondbrain_app  |     config = get_config()
+secondbrain_app  |              ^^^^^^^^^^
+secondbrain_app  | NameError: name 'get_config' is not defined
+secondbrain_app  | [2026-01-11 20:29:32 +0000] [8] [INFO] Worker exiting (pid: 8)
+secondbrain_app  | 2026-01-11 20:29:32 - root - INFO - Logging configured at INFO level
+secondbrain_app  | [2026-01-11 20:29:32 +0000] [7] [ERROR] Exception in worker process
+secondbrain_app  | Traceback (most recent call last):
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/arbiter.py", line 609, in spawn_worker
+secondbrain_app  |     worker.init_process()
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/workers/gthread.py", line 95, in init_process
+secondbrain_app  |     super().init_process()
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/workers/base.py", line 134, in init_process
+secondbrain_app  |     self.load_wsgi()
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/workers/base.py", line 146, in load_wsgi
+secondbrain_app  |     self.wsgi = self.app.wsgi()
+secondbrain_app  |                 ^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/app/base.py", line 67, in wsgi
+secondbrain_app  |     self.callable = self.load()
+secondbrain_app  |                     ^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/app/wsgiapp.py", line 58, in load
+secondbrain_app  |     return self.load_wsgiapp()
+secondbrain_app  |            ^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/app/wsgiapp.py", line 48, in load_wsgiapp
+secondbrain_app  |     return util.import_app(self.app_uri)
+secondbrain_app  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/util.py", line 371, in import_app
+secondbrain_app  |     mod = importlib.import_module(module)
+secondbrain_app  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+secondbrain_app  |     return _bootstrap._gcd_import(name[level:], package, level)
+secondbrain_app  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+secondbrain_app  |   File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+secondbrain_app  |   File "/app/app.py", line 44, in <module>
+secondbrain_app  |     config = get_config()
+secondbrain_app  |              ^^^^^^^^^^
+secondbrain_app  | NameError: name 'get_config' is not defined
+secondbrain_app  | [2026-01-11 20:29:32 +0000] [7] [INFO] Worker exiting (pid: 7)
+secondbrain_app  | [2026-01-11 20:29:33 +0000] [1] [ERROR] Worker (pid:8) exited with code 3
+secondbrain_app  | [2026-01-11 20:29:33 +0000] [1] [ERROR] Worker (pid:7) was sent SIGTERM!
+secondbrain_app  | [2026-01-11 20:29:33 +0000] [1] [ERROR] Shutting down: Master
+secondbrain_app  | [2026-01-11 20:29:33 +0000] [1] [ERROR] Reason: Worker failed to boot.
+secondbrain_app  | [2026-01-11 20:30:34 +0000] [1] [INFO] Starting gunicorn 21.2.0
+secondbrain_app  | [2026-01-11 20:30:34 +0000] [1] [INFO] Listening at: http://0.0.0.0:5895 (1)
+secondbrain_app  | [2026-01-11 20:30:34 +0000] [1] [INFO] Using worker: gthread
+secondbrain_app  | [2026-01-11 20:30:34 +0000] [7] [INFO] Booting worker with pid: 7
+secondbrain_app  | [2026-01-11 20:30:34 +0000] [8] [INFO] Booting worker with pid: 8
+secondbrain_app  | 2026-01-11 20:30:37 - root - INFO - Logging configured at INFO level
+secondbrain_app  | [2026-01-11 20:30:37 +0000] [7] [ERROR] Exception in worker process
+secondbrain_app  | Traceback (most recent call last):
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/arbiter.py", line 609, in spawn_worker
+secondbrain_app  |     worker.init_process()
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/workers/gthread.py", line 95, in init_process
+secondbrain_app  |     super().init_process()
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/workers/base.py", line 134, in init_process
+secondbrain_app  |     self.load_wsgi()
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/workers/base.py", line 146, in load_wsgi
+secondbrain_app  |     self.wsgi = self.app.wsgi()
+secondbrain_app  |                 ^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/app/base.py", line 67, in wsgi
+secondbrain_app  |     self.callable = self.load()
+secondbrain_app  |                     ^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/app/wsgiapp.py", line 58, in load
+secondbrain_app  |     return self.load_wsgiapp()
+secondbrain_app  |            ^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/app/wsgiapp.py", line 48, in load_wsgiapp
+secondbrain_app  |     return util.import_app(self.app_uri)
+secondbrain_app  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/util.py", line 371, in import_app
+secondbrain_app  |     mod = importlib.import_module(module)
+secondbrain_app  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+secondbrain_app  |     return _bootstrap._gcd_import(name[level:], package, level)
+secondbrain_app  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+secondbrain_app  |   File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+secondbrain_app  |   File "/app/app.py", line 44, in <module>
+secondbrain_app  |     config = get_config()
+secondbrain_app  |              ^^^^^^^^^^
+secondbrain_app  | NameError: name 'get_config' is not defined
+secondbrain_app  | [2026-01-11 20:30:37 +0000] [7] [INFO] Worker exiting (pid: 7)
+secondbrain_app  | 2026-01-11 20:30:37 - root - INFO - Logging configured at INFO level
+secondbrain_app  | [2026-01-11 20:30:37 +0000] [8] [ERROR] Exception in worker process
+secondbrain_app  | Traceback (most recent call last):
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/arbiter.py", line 609, in spawn_worker
+secondbrain_app  |     worker.init_process()
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/workers/gthread.py", line 95, in init_process
+secondbrain_app  |     super().init_process()
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/workers/base.py", line 134, in init_process
+secondbrain_app  |     self.load_wsgi()
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/workers/base.py", line 146, in load_wsgi
+secondbrain_app  |     self.wsgi = self.app.wsgi()
+secondbrain_app  |                 ^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/app/base.py", line 67, in wsgi
+secondbrain_app  |     self.callable = self.load()
+secondbrain_app  |                     ^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/app/wsgiapp.py", line 58, in load
+secondbrain_app  |     return self.load_wsgiapp()
+secondbrain_app  |            ^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/app/wsgiapp.py", line 48, in load_wsgiapp
+secondbrain_app  |     return util.import_app(self.app_uri)
+secondbrain_app  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/site-packages/gunicorn/util.py", line 371, in import_app
+secondbrain_app  |     mod = importlib.import_module(module)
+secondbrain_app  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "/usr/local/lib/python3.11/importlib/__init__.py", line 126, in import_module
+secondbrain_app  |     return _bootstrap._gcd_import(name[level:], package, level)
+secondbrain_app  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 1204, in _gcd_import
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 1176, in _find_and_load
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 1147, in _find_and_load_unlocked
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 690, in _load_unlocked
+secondbrain_app  |   File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+secondbrain_app  |   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+secondbrain_app  |   File "/app/app.py", line 44, in <module>
+secondbrain_app  |     config = get_config()
+secondbrain_app  |              ^^^^^^^^^^
+secondbrain_app  | NameError: name 'get_config' is not defined
+secondbrain_app  | [2026-01-11 20:30:37 +0000] [8] [INFO] Worker exiting (pid: 8)
+secondbrain_app  | [2026-01-11 20:30:38 +0000] [1] [ERROR] Worker (pid:7) exited with code 3
+secondbrain_app  | [2026-01-11 20:30:38 +0000] [1] [ERROR] Worker (pid:8) was sent SIGTERM!
+secondbrain_app  | [2026-01-11 20:30:38 +0000] [1] [ERROR] Shutting down: Master
+secondbrain_app  | [2026-01-11 20:30:38 +0000] [1] [ERROR] Reason: Worker failed to boot.

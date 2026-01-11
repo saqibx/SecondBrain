@@ -2,7 +2,6 @@ from concurrent.futures.thread import ThreadPoolExecutor
 from math import floor
 
 from dotenv import load_dotenv
-from googleapiclient.errors import HttpError
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
@@ -12,8 +11,6 @@ from typing import Optional
 import os
 from flask import session
 import time
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
 import datetime
 
 

@@ -4,7 +4,7 @@ from typing_extensions import TypedDict
 from tavily import TavilyClient
 import os
 import time
-from langgraph.graph import StateGraph, START, END
+from langgraph.graph import StateGraph
 from langchain_core.messages import BaseMessage, ToolMessage, SystemMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
@@ -12,7 +12,8 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 import Agents.utils as utils
 
-
+START = "__start__"
+END = "__end__"
 
 
 

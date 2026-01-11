@@ -1,0 +1,71 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: secondbrain_mongo
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.runCommand({ ping: 1 })"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: secondbrain_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    container_name: secondbrain_app
+    restart: unless-stopped
+
+    # on 4GB RAM, keep this light
+    environment:
+      FLASK_ENV: production
+      HOST: 0.0.0.0
+      PORT: 5895
+
+      MONGO_URI: mongodb://mongodb:27017
+      REDIS_URL: redis://redis:6379/0
+
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      TAVILY_API_KEY: ${TAVILY_API_KEY}
+      APP_SECRET_KEY: ${APP_SECRET_KEY}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    # expose to localhost only (cloudflared will connect to localhost)
+    ports:
+      - "0.0.0.0:5895:5895"
+
+    volumes:
+      - secondbrain_data:/app/DATA
+      - secondbrain_chroma:/app/Classes/chroma_db
+      - secondbrain_logs:/app/logs
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5895/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mongo_data:
+  redis_data:
+  secondbrain_data:
+  secondbrain_chroma:
+  secondbrain_logs:
