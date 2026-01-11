@@ -22,6 +22,7 @@ class Config:
     SESSION_REFRESH_EACH_REQUEST = True
 
     # Session cookies for cross-site requests (required for frontend on different domain)
+    SESSION_COOKIE_NAME = "session"
     SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "None")
     SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "true").lower() == "true"
     SESSION_COOKIE_HTTPONLY = True  # Security: prevent JavaScript access to session cookie
@@ -31,7 +32,7 @@ class Config:
     REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
     
     # MongoDB
-    MONGO_URI = os.getenv("MONGO_URI", "mongodb://mongodby:27017")
+    MONGO_URI = os.getenv("MONGO_URI", "mongodb://mongodb:27017")
     MONGODB_CLIENT = os.getenv("MONGODB_CLIENT", "secondbrain")
     MONGODB_COLLECTION = os.getenv("MONGODB_COLLECTION", "users")
     

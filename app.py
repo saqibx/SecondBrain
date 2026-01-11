@@ -49,7 +49,10 @@ app = Flask(__name__)
 app.config.from_object(config)
 
 if config.SESSION_TYPE == "redis":
-    app.config["SESSION_REDIS"] = redis.from_url(config.REDIS_URL)
+    app.config["SESSION_REDIS"] = redis.from_url(
+        config.REDIS_URL,
+        decode_responses=True  # critical: avoids bytes cookie/session_id
+    )
 
 # Initialize session
 Session(app)
