@@ -1,82 +1,198 @@
-import os
-from dotenv import load_dotenv
-from google import genai
-import re
-from langchain_core.documents import Document
+"""Helper functions for document processing""""""
+
+Helper functions for document processing and AI summarization.
+
+import logging"""
+
+from typing import Tuple, List
+
+from langchain_core.documents import Documentimport os
+
+from langchain_text_splitters import RecursiveCharacterTextSplitterimport re
+
+from langchain_openai import ChatOpenAIimport logging
+
+from tenacity import retry, stop_after_attempt, wait_exponentialfrom dotenv import load_dotenv
+
+from typing import Tuple, List
+
+logger = logging.getLogger(__name__)from langchain_core.documents import Document
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 from langchain_openai import ChatOpenAI
 
-load_dotenv()
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))from tenacity import retry, stop_after_attempt, wait_exponential
+
+def get_summary_fromAI(text: str, model: str = "gpt-4o-mini") -> str:
+
+    """Summarize text using OpenAI with retry logic"""load_dotenv()
+
+    if not text or not text.strip():
+
+        raise ValueError("Cannot summarize empty text")logger = logging.getLogger(__name__)
 
 
-def get_summary_fromAI(text):
-    prompt = f'''
-    You are a summarizing assistant. When given a document, your job is to extract and translate the information into clear, simple language for use in a Retrieval-Augmented Generation (RAG) system. 
-    
-    Your output must be structured and useful for downstream querying. 
-    
-    Rules:
-    - Do **not** invent facts or leave out important information.
-    - Use **plain language** that’s easy for a non-technical person to understand.
-    - Include all relevant details.
-    - Follow the correct format based on document type.
-    - **Metadata fields like Topic and Guests can include multiple comma-separated values.**
-    
-    ---
-    
-    📘 If the document is related to **Tech Start UCalgary** (a student startup incubator), use this format:
 
-    Topic: (choose one or more from: sponsorship, meeting, club history, executives, misc)
-    Guests: (list the names of any companies or individuals mentioned)
-    Year: (if a specific year is mentioned, include it here)
-    Notes: (summarize the content clearly and completely)
-    
-    🎓 If the document is related to **school or academics**, use this format:
+    prompt = f"Summarize this document clearly: {text[:1000]}"
 
-    Topic: (name of the subject, e.g., CPSC 355, history, philosophy)
-    Year: (if mentioned, include it here)
-    Notes: (summarize all important academic concepts, topics, or facts mentioned)
-    
-    If you're unsure which category it falls into, **take your best guess** based on the content. 
+    llm = ChatOpenAI(model=model, temperature=0)@retry(
 
-    ---
-    
-    
-    If the document is related to general queries (Researched topics, Random items, etc) that doesn't fall into one the prior categories
-    use this format
-    
-    Topic: Researched Items, and then whatever the topic is, include both
-    Notes: Word for word whatever has been passed down to you.
+    response = llm.invoke(prompt)    stop=stop_after_attempt(3),
 
-    Here is the document text:
-    {text}
-    '''
+    if not response.content:    wait=wait_exponential(multiplier=1, min=2, max=10)
 
-    loc_model = ChatOpenAI(model="gpt-4o-mini")
-    response = loc_model.invoke(prompt)
-    return response.content
+        raise ValueError("Empty response from LLM"))
+
+    logger.debug(f"Summarized text of length {len(text)}")def get_summary_fromAI(text: str, model: str = "gpt-4o-mini") -> str:
+
+    return response.content    """
+
+    Summarize text using OpenAI API with retry logic.
+
+
+
+def split_into_blocks(text: str) -> Tuple[List[Document], str]:    Args:
+
+    """Split text into blocks separated by --- markers"""        text: Text to summarize
+
+    if not text:        model: Model to use for summarization
+
+        return [], ""
+
+    import re    Returns:
+
+    BLOCK_RE = re.compile(r"^\s*---\s*(.*?)\s*---\s*$", flags=re.MULTILINE)        Summarized text
+
+    parts = BLOCK_RE.split(text)    """
+
+    docs = []    if not text or not text.strip():
+
+    preamble = parts[0].strip()        raise ValueError("Cannot summarize empty text")
+
+    i = 1
+
+    while i < len(parts):    prompt = f"""You are a summarizing assistant. Your job is to extract 
+
+        title = parts[i].strip()    information into clear language for RAG systems.
+
+        block = parts[i + 1].strip() if i + 1 < len(parts) else ""
+
+        if block:    Rules:
+
+            docs.append(Document(page_content=block, metadata={"title": title}))    - Do NOT invent facts
+
+        i += 2    - Use plain language
+
+    logger.debug(f"Split text into {len(docs)} blocks")    - Include all relevant details
+
+    return docs, preamble    - Follow format based on document type
+
+
+
+    If Tech Start UCalgary related:
+
+def rechunk_blocks(block_docs: List[Document], chunk_size: int = 1200, chunk_overlap: int = 150) -> List[Document]:    Topic: (sponsorship/meeting/club history/executives/misc)
+
+    """Rechunk documents into smaller chunks"""    Guests: (names of companies)
+
+    if not block_docs:    Year: (if mentioned)
+
+        return []    Notes: (summary)
+
+    splitter = RecursiveCharacterTextSplitter(
+
+        chunk_size=chunk_size,    If academic:
+
+        chunk_overlap=chunk_overlap,    Topic: (subject name)
+
+        separators=["\n\n", "\n", " ", ""],    Year: (if mentioned)
+
+    )    Notes: (concepts and facts)
+
+    rechunked = splitter.split_documents(block_docs)
+
+    logger.debug(f"Rechunked {len(block_docs)} docs into {len(rechunked)} chunks")    Otherwise:
+
+    return rechunked    Topic: Researched Items - [topic]
+
+    Notes: [summary]
+
+    Document text:
+    {text}"""
+
+    try:
+        llm = ChatOpenAI(model=model, temperature=0)
+        response = llm.invoke(prompt)
+
+        if not response.content:
+            raise ValueError("Empty response from LLM")
+
+        logger.debug(f"Successfully summarized text of length {len(text)}")
+        return response.content
+
+    except Exception as e:
+        logger.error(f"Error in get_summary_fromAI: {e}", exc_info=True)
+        raise
+
 
 BLOCK_RE = re.compile(r"^\s*---\s*(.*?)\s*---\s*$", flags=re.MULTILINE)
 
-def split_into_blocks(text: str):
+
+def split_into_blocks(text: str) -> Tuple[List[Document], str]:
+    """
+    Split text into blocks separated by --- markers.
+
+    Args:
+        text: Text containing blocks separated by ---
+
+    Returns:
+        Tuple of (documents list, preamble text)
+    """
+    if not text:
+        return [], ""
+
     parts = BLOCK_RE.split(text)
-    # parts = [preamble, title1, block1, title2, block2, ...]
     docs = []
     preamble = parts[0].strip()
+
     i = 1
     while i < len(parts):
         title = parts[i].strip()
-        block = parts[i+1].strip()
-        docs.append(Document(page_content=block, metadata={"title": title}))
+        block = parts[i + 1].strip() if i + 1 < len(parts) else ""
+        if block:
+            docs.append(Document(page_content=block, metadata={"title": title}))
         i += 2
+
+    logger.debug(f"Split text into {len(docs)} blocks")
     return docs, preamble
 
-def rechunk_blocks(block_docs, chunk_size=1200, chunk_overlap=150):
+
+def rechunk_blocks(
+    block_docs: List[Document],
+    chunk_size: int = 1200,
+    chunk_overlap: int = 150
+) -> List[Document]:
+    """
+    Rechunk documents into smaller chunks for better retrieval.
+
+    Args:
+        block_docs: List of documents to rechunk
+        chunk_size: Size of each chunk
+        chunk_overlap: Overlap between chunks
+
+    Returns:
+        List of rechunked documents
+    """
+    if not block_docs:
+        return []
+
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
-        separators=["\n\n", "\n", " ", ""],  # fallback cascade
+        separators=["\n\n", "\n", " ", ""],
     )
-    return splitter.split_documents(block_docs)
 
-
+    rechunked = splitter.split_documents(block_docs)
+    logger.debug(f"Rechunked {len(block_docs)} docs into {len(rechunked)} chunks")
+    return rechunked
